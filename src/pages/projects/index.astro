@@ -3,14 +3,17 @@ import { getCollection } from 'astro:content';
 import Base from '@/layouts/Base.astro';
 import ProjectCard from '@/components/ProjectCard.astro';
 
-const allProjects = await getCollection('projects');
-
-// Sort: featured first, then by title
-const projects = allProjects.sort((a, b) => {
-  if (a.data.featured && !b.data.featured) return -1;
-  if (!a.data.featured && b.data.featured) return 1;
-  return a.data.title.localeCompare(b.data.title);
-});
+let projects: any[] = [];
+try {
+  const allProjects = await getCollection('projects');
+  projects = allProjects.sort((a, b) => {
+    if (a.data.featured && !b.data.featured) return -1;
+    if (!a.data.featured && b.data.featured) return 1;
+    return a.data.title.localeCompare(b.data.title);
+  });
+} catch {
+  // Collection empty or doesn't exist yet
+}
 ---
 
 <Base title="Projects | straystream" description="A collection of projects I've worked on">
@@ -25,7 +28,7 @@ const projects = allProjects.sort((a, b) => {
         {projects.map((project) => (
           <ProjectCard
             title={project.data.title}
-            slug={project.slug}
+            slug={project.id.replace('/index', '')}
             tagline={project.data.tagline}
             techStack={project.data.techStack}
             projectLink={project.data.projectLink}

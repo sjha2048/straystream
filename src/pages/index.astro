@@ -14,15 +14,21 @@ const home = homeEntry?.data ?? {
 };
 
 // Get recent published posts
-const allPosts = await getCollection('posts');
-const recentPosts = allPosts
-  .filter((post) => post.data.isPublished)
-  .sort((a, b) => new Date(b.data.publishedDate).getTime() - new Date(a.data.publishedDate).getTime())
-  .slice(0, 3);
+let recentPosts: any[] = [];
+try {
+  const allPosts = await getCollection('posts');
+  recentPosts = allPosts
+    .filter((post) => post.data.isPublished)
+    .sort((a, b) => new Date(b.data.publishedDate).getTime() - new Date(a.data.publishedDate).getTime())
+    .slice(0, 3);
+} catch {}
 
 // Get featured projects
-const allProjects = await getCollection('projects');
-const featuredProjects = allProjects.filter((project) => project.data.featured).slice(0, 3);
+let featuredProjects: any[] = [];
+try {
+  const allProjects = await getCollection('projects');
+  featuredProjects = allProjects.filter((project) => project.data.featured).slice(0, 3);
+} catch {}
 ---
 
 <Base title="Home | straystream" description="Personal portfolio and blog">
@@ -54,7 +60,7 @@ const featuredProjects = allProjects.filter((project) => project.data.featured).
         {featuredProjects.map((project) => (
           <ProjectCard
             title={project.data.title}
-            slug={project.slug}
+            slug={project.id.replace('/index', '')}
             tagline={project.data.tagline}
             techStack={project.data.techStack}
             projectLink={project.data.projectLink}
