@@ -1,24 +1,37 @@
 ---
-import { getCollection, render } from 'astro:content';
 import Base from '@/layouts/Base.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import Markdoc from '@markdoc/markdoc';
 
-// Get about page content - id will be "about/index" from glob loader
-let aboutEntry: any = null;
+// Read about page content directly from file
+let title = 'About';
+let subtitle = 'A bit about me and what I do';
+let contentHtml = '';
+
 try {
-  const pages = await getCollection('pages');
-  aboutEntry = pages.find(p => p.id.startsWith('about/'));
+  const aboutPath = path.join(process.cwd(), 'src/content/pages/about/index.mdoc');
+  const rawContent = fs.readFileSync(aboutPath, 'utf-8');
+
+  // Parse frontmatter and content
+  const frontmatterMatch = rawContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+    const content = frontmatterMatch[2];
+
+    // Extract title and subtitle from frontmatter
+    const titleMatch = frontmatter.match(/title:\s*(.+)/);
+    const subtitleMatch = frontmatter.match(/subtitle:\s*(.+)/);
+    if (titleMatch) title = titleMatch[1].trim();
+    if (subtitleMatch) subtitle = subtitleMatch[1].trim();
+
+    // Render markdoc content
+    const ast = Markdoc.parse(content);
+    const transformed = Markdoc.transform(ast);
+    contentHtml = Markdoc.renderers.html(transformed);
+  }
 } catch {
-  // Collection doesn't exist yet
-}
-
-const title = aboutEntry?.data?.title ?? 'About';
-const subtitle = aboutEntry?.data?.subtitle ?? '';
-
-// Render content if it exists
-let Content: any = null;
-if (aboutEntry) {
-  const rendered = await render(aboutEntry);
-  Content = rendered.Content;
+  // File doesn't exist yet
 }
 ---
 
@@ -29,10 +42,8 @@ if (aboutEntry) {
       {subtitle && <p class="mt-4 text-xl text-neutral-600">{subtitle}</p>}
     </header>
 
-    {Content ? (
-      <div class="prose prose-neutral max-w-none">
-        <Content />
-      </div>
+    {contentHtml ? (
+      <div class="prose prose-neutral max-w-none" set:html={contentHtml} />
     ) : (
       <div class="prose prose-neutral max-w-none">
         <p>
