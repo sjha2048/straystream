@@ -1,17 +1,24 @@
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import Base from '@/layouts/Base.astro';
 import BlogCard from '@/components/BlogCard.astro';
 import ProjectCard from '@/components/ProjectCard.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import yaml from 'js-yaml';
 
-// Get home page content from Keystatic
-const homeEntry = await getEntry('pages', 'home' as any).catch(() => null);
-const home = homeEntry?.data ?? {
-  headline: "Hi, I'm a developer.",
-  subheadline: "I build things for the web.",
-  ctaText: "View my work",
+// Get home page content from YAML file
+let home = {
+  headline: "Hey, I'm Sahil.",
+  subheadline: "I build data pipelines and developer tools.",
+  ctaText: "See what I've built",
   ctaLink: "/projects",
 };
+try {
+  const homePath = path.join(process.cwd(), 'src/content/pages/home.yaml');
+  const homeContent = fs.readFileSync(homePath, 'utf-8');
+  home = yaml.load(homeContent) as typeof home;
+} catch {}
 
 // Get recent published posts
 let recentPosts: any[] = [];
@@ -84,7 +91,7 @@ try {
         {recentPosts.map((post) => (
           <BlogCard
             title={post.data.title}
-            slug={post.slug}
+            slug={post.id.split('/')[0]}
             excerpt={post.data.excerpt}
             publishedDate={post.data.publishedDate}
             coverImage={post.data.coverImage}

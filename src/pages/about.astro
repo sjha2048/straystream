@@ -1,9 +1,15 @@
 ---
-import { getEntry } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Base from '@/layouts/Base.astro';
 
-// Get about page content from Keystatic
-const aboutEntry = await getEntry('pages', 'about' as any).catch(() => null);
+// Get about page content - id will be "about/index" from glob loader
+let aboutEntry: any = null;
+try {
+  const pages = await getCollection('pages');
+  aboutEntry = pages.find(p => p.id.startsWith('about/'));
+} catch {
+  // Collection doesn't exist yet
+}
 
 const title = aboutEntry?.data?.title ?? 'About';
 const subtitle = aboutEntry?.data?.subtitle ?? '';
@@ -11,7 +17,7 @@ const subtitle = aboutEntry?.data?.subtitle ?? '';
 // Render content if it exists
 let Content: any = null;
 if (aboutEntry) {
-  const rendered = await aboutEntry.render();
+  const rendered = await render(aboutEntry);
   Content = rendered.Content;
 }
 ---
