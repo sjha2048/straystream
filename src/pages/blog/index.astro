@@ -1,0 +1,39 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+import BlogCard from '@/components/BlogCard.astro';
+
+const allPosts = await getCollection('posts');
+
+// Only show published posts, sorted by date descending
+const posts = allPosts
+  .filter((post) => post.data.isPublished)
+  .sort((a, b) => new Date(b.data.publishedDate).getTime() - new Date(a.data.publishedDate).getTime());
+---
+
+<Base title="Blog | straystream" description="Thoughts, tutorials, and musings">
+  <section class="container-wide py-16">
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold text-neutral-900 tracking-tight">Blog</h1>
+      <p class="mt-4 text-xl text-neutral-600">Thoughts, tutorials, and musings.</p>
+    </header>
+
+    {posts.length > 0 ? (
+      <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <BlogCard
+            title={post.data.title}
+            slug={post.slug}
+            excerpt={post.data.excerpt}
+            publishedDate={post.data.publishedDate}
+            coverImage={post.data.coverImage}
+          />
+        ))}
+      </div>
+    ) : (
+      <p class="text-neutral-500">
+        No posts yet. Check back soon.
+      </p>
+    )}
+  </section>
+</Base>

@@ -1,0 +1,38 @@
+---
+interface Props {
+  title: string;
+  slug: string;
+  excerpt: string;
+  publishedDate: string;
+  coverImage?: string | null;
+}
+
+const { title, slug, excerpt, publishedDate, coverImage } = Astro.props;
+
+const formattedDate = new Date(publishedDate).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<article class="group">
+  <a href={`/blog/${slug}`} class="block">
+    {coverImage && (
+      <div class="aspect-[2/1] overflow-hidden rounded-lg mb-4 bg-neutral-100">
+        <img
+          src={coverImage}
+          alt=""
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    )}
+    <time class="text-sm text-neutral-500">{formattedDate}</time>
+    <h3 class="mt-1 text-lg font-semibold text-neutral-900 group-hover:text-neutral-600 transition-colors">
+      {title}
+    </h3>
+    <p class="mt-2 text-neutral-600 line-clamp-2">{excerpt}</p>
+  </a>
+</article>

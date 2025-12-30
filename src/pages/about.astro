@@ -1,0 +1,38 @@
+---
+import { getEntry } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+
+// Get about page content from Keystatic
+const aboutEntry = await getEntry('pages', 'about' as any).catch(() => null);
+
+const title = aboutEntry?.data?.title ?? 'About';
+const subtitle = aboutEntry?.data?.subtitle ?? '';
+
+// Render content if it exists
+let Content: any = null;
+if (aboutEntry) {
+  const rendered = await aboutEntry.render();
+  Content = rendered.Content;
+}
+---
+
+<Base title="About | straystream" description="Learn more about me and what I do">
+  <article class="container-narrow py-16">
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold text-neutral-900 tracking-tight">{title}</h1>
+      {subtitle && <p class="mt-4 text-xl text-neutral-600">{subtitle}</p>}
+    </header>
+
+    {Content ? (
+      <div class="prose prose-neutral max-w-none">
+        <Content />
+      </div>
+    ) : (
+      <div class="prose prose-neutral max-w-none">
+        <p>
+          More about me coming soon.
+        </p>
+      </div>
+    )}
+  </article>
+</Base>

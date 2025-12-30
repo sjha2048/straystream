@@ -1,0 +1,99 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+import BlogCard from '@/components/BlogCard.astro';
+import ProjectCard from '@/components/ProjectCard.astro';
+
+// Get home page content from Keystatic
+const homeEntry = await getEntry('pages', 'home' as any).catch(() => null);
+const home = homeEntry?.data ?? {
+  headline: "Hi, I'm a developer.",
+  subheadline: "I build things for the web.",
+  ctaText: "View my work",
+  ctaLink: "/projects",
+};
+
+// Get recent published posts
+const allPosts = await getCollection('posts');
+const recentPosts = allPosts
+  .filter((post) => post.data.isPublished)
+  .sort((a, b) => new Date(b.data.publishedDate).getTime() - new Date(a.data.publishedDate).getTime())
+  .slice(0, 3);
+
+// Get featured projects
+const allProjects = await getCollection('projects');
+const featuredProjects = allProjects.filter((project) => project.data.featured).slice(0, 3);
+---
+
+<Base title="Home | straystream" description="Personal portfolio and blog">
+  <!-- Hero Section -->
+  <section class="container-wide py-16 md:py-24">
+    <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
+      {home.headline}
+    </h1>
+    <p class="mt-4 text-xl text-neutral-600 max-w-xl">
+      {home.subheadline}
+    </p>
+    {home.ctaText && home.ctaLink && (
+      <a href={home.ctaLink} class="mt-6 btn btn-primary inline-block">
+        {home.ctaText}
+      </a>
+    )}
+  </section>
+
+  <!-- Featured Projects -->
+  {featuredProjects.length > 0 && (
+    <section class="container-wide py-12 border-t border-neutral-100">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-semibold text-neutral-900">Featured Projects</h2>
+        <a href="/projects" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+          View all &rarr;
+        </a>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {featuredProjects.map((project) => (
+          <ProjectCard
+            title={project.data.title}
+            slug={project.slug}
+            tagline={project.data.tagline}
+            techStack={project.data.techStack}
+            projectLink={project.data.projectLink}
+            coverImage={project.data.coverImage}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Recent Posts -->
+  {recentPosts.length > 0 && (
+    <section class="container-wide py-12 border-t border-neutral-100">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-semibold text-neutral-900">Recent Posts</h2>
+        <a href="/blog" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+          View all &rarr;
+        </a>
+      </div>
+      <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {recentPosts.map((post) => (
+          <BlogCard
+            title={post.data.title}
+            slug={post.slug}
+            excerpt={post.data.excerpt}
+            publishedDate={post.data.publishedDate}
+            coverImage={post.data.coverImage}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Empty state for new site -->
+  {featuredProjects.length === 0 && recentPosts.length === 0 && (
+    <section class="container-wide py-12 border-t border-neutral-100">
+      <p class="text-neutral-500">
+        Content coming soon.
+      </p>
+    </section>
+  )}
+</Base>

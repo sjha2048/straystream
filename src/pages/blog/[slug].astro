@@ -1,0 +1,72 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+
+const { title, excerpt, publishedDate, coverImage } = post.data;
+
+const formattedDate = new Date(publishedDate).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+// Calculate reading time (rough estimate: 200 words per minute)
+const wordCount = post.body?.split(/\s+/).length ?? 0;
+const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+---
+
+<Base
+  title={`${title} | Blog | straystream`}
+  description={excerpt}
+  image={coverImage ?? undefined}
+  article={true}
+  publishedDate={publishedDate}
+>
+  <article class="container-narrow py-16">
+    <!-- Back link -->
+    <a href="/blog" class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-900 transition-colors mb-8">
+      &larr; All posts
+    </a>
+
+    <!-- Header -->
+    <header class="mb-12">
+      {coverImage && (
+        <img
+          src={coverImage}
+          alt=""
+          class="w-full aspect-[2/1] object-cover rounded-lg mb-8"
+        />
+      )}
+      <div class="flex items-center gap-3 text-sm text-neutral-500">
+        <time datetime={publishedDate}>{formattedDate}</time>
+        <span>&middot;</span>
+        <span>{readingTime} min read</span>
+      </div>
+      <h1 class="mt-4 text-4xl font-bold text-neutral-900 tracking-tight">{title}</h1>
+      <p class="mt-4 text-xl text-neutral-600">{excerpt}</p>
+    </header>
+
+    <!-- Content -->
+    <div class="prose prose-neutral prose-lg max-w-none">
+      <Content />
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-16 pt-8 border-t border-neutral-200">
+      <a href="/blog" class="text-neutral-500 hover:text-neutral-900 transition-colors">
+        &larr; Back to all posts
+      </a>
+    </footer>
+  </article>
+</Base>
