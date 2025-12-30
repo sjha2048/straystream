@@ -60,6 +60,51 @@ export default {
             },
           },
         },
+        invert: {
+          css: {
+            color: theme('colors.neutral.300'),
+            a: {
+              color: theme('colors.neutral.100'),
+              '&:hover': {
+                color: theme('colors.neutral.400'),
+              },
+            },
+            'h1, h2, h3, h4': {
+              color: theme('colors.neutral.100'),
+            },
+            strong: {
+              color: theme('colors.neutral.100'),
+            },
+            code: {
+              color: theme('colors.neutral.200'),
+              backgroundColor: theme('colors.neutral.800'),
+            },
+            pre: {
+              backgroundColor: theme('colors.neutral.800'),
+              color: theme('colors.neutral.200'),
+            },
+            blockquote: {
+              borderLeftColor: theme('colors.neutral.700'),
+              color: theme('colors.neutral.400'),
+            },
+            hr: {
+              borderColor: theme('colors.neutral.700'),
+            },
+            'ol > li::marker': {
+              color: theme('colors.neutral.400'),
+            },
+            'ul > li::marker': {
+              color: theme('colors.neutral.400'),
+            },
+            thead: {
+              color: theme('colors.neutral.100'),
+              borderBottomColor: theme('colors.neutral.700'),
+            },
+            'tbody tr': {
+              borderBottomColor: theme('colors.neutral.800'),
+            },
+          },
+        },
       }),
     },
   },

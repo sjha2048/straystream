@@ -17,8 +17,8 @@ try {
 <Base title="Blog | straystream" description="Thoughts, tutorials, and musings">
   <section class="container-wide py-16">
     <header class="mb-12">
-      <h1 class="text-4xl font-bold text-neutral-900 tracking-tight">Blog</h1>
-      <p class="mt-4 text-xl text-neutral-600">Thoughts, tutorials, and musings.</p>
+      <h1 class="text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">Blog</h1>
+      <p class="mt-4 text-xl text-neutral-600 dark:text-neutral-400">Thoughts, tutorials, and musings.</p>
     </header>
 
     {posts.length > 0 ? (
@@ -34,7 +34,7 @@ try {
         ))}
       </div>
     ) : (
-      <p class="text-neutral-500">
+      <p class="text-neutral-500 dark:text-neutral-400">
         No posts yet. Check back soon.
       </p>
     )}

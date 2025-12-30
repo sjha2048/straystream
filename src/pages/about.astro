@@ -38,14 +38,14 @@ try {
 <Base title="About | straystream" description="Learn more about me and what I do">
   <article class="container-narrow py-16">
     <header class="mb-12">
-      <h1 class="text-4xl font-bold text-neutral-900 tracking-tight">{title}</h1>
-      {subtitle && <p class="mt-4 text-xl text-neutral-600">{subtitle}</p>}
+      <h1 class="text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">{title}</h1>
+      {subtitle && <p class="mt-4 text-xl text-neutral-600 dark:text-neutral-400">{subtitle}</p>}
     </header>
 
     {contentHtml ? (
-      <div class="prose prose-neutral max-w-none" set:html={contentHtml} />
+      <div class="prose prose-neutral dark:prose-invert max-w-none" set:html={contentHtml} />
     ) : (
-      <div class="prose prose-neutral max-w-none">
+      <div class="prose prose-neutral dark:prose-invert max-w-none">
         <p>
           More about me coming soon.
         </p>

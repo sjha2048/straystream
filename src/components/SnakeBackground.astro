@@ -60,7 +60,7 @@
       display: none;
     }
     .pacman-hint::after {
-      content: 'Tap to play';
+      content: 'Double-tap to summon Pacman';
     }
   }
 
@@ -268,45 +268,47 @@
       });
 
       // Mouse control - listen on window so it works even when content is on top
-      window.addEventListener('mousemove', (e) => {
-        this.userControlled = true;
-        this.pacman.targetX = e.clientX;
-        this.pacman.targetY = e.clientY;
-      });
+      if (!this.isPhone) {
+        window.addEventListener('mousemove', (e) => {
+          this.userControlled = true;
+          this.pacman.targetX = e.clientX;
+          this.pacman.targetY = e.clientY;
+        });
 
-      // When mouse leaves the window, go back to auto mode
-      document.addEventListener('mouseleave', () => {
-        this.userControlled = false;
-        setTimeout(() => {
-          if (!this.userControlled) {
-            this.findNextTarget();
+        // When mouse leaves the window, go back to auto mode
+        document.addEventListener('mouseleave', () => {
+          this.userControlled = false;
+          setTimeout(() => {
+            if (!this.userControlled) {
+              this.findNextTarget();
+            }
+          }, 500);
+        });
+      }
+
+      // Touch control - only on canvas, don't interfere with scrolling
+      if (this.isPhone) {
+        // On mobile, Pacman just auto-plays - more ambient/decorative
+        // User can tap canvas to make Pacman go to that spot briefly
+        this.canvas.style.pointerEvents = 'none'; // Let touches pass through to content
+
+        // Optional: double-tap anywhere to briefly control Pacman
+        let lastTap = 0;
+        document.addEventListener('touchstart', (e) => {
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            // Double tap - Pacman goes to tap location
+            const touch = e.touches[0];
+            this.pacman.targetX = touch.clientX;
+            this.pacman.targetY = touch.clientY;
+            // Brief user control, then back to auto
+            setTimeout(() => {
+              this.findNextTarget();
+            }, 2000);
           }
-        }, 500);
-      });
-
-      // Touch control - listen on window
-      window.addEventListener('touchstart', (e) => {
-        this.userControlled = true;
-        const touch = e.touches[0];
-        this.pacman.targetX = touch.clientX;
-        this.pacman.targetY = touch.clientY;
-      }, { passive: true });
-
-      window.addEventListener('touchmove', (e) => {
-        this.userControlled = true;
-        const touch = e.touches[0];
-        this.pacman.targetX = touch.clientX;
-        this.pacman.targetY = touch.clientY;
-      }, { passive: true });
-
-      window.addEventListener('touchend', () => {
-        this.userControlled = false;
-        setTimeout(() => {
-          if (!this.userControlled) {
-            this.findNextTarget();
-          }
-        }, 1000);
-      });
+          lastTap = now;
+        }, { passive: true });
+      }
 
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
@@ -477,16 +479,44 @@
       }
     }
 
+    private getContentFade(): number {
+      // Fade pacman when near center content area for better readability
+      const x = this.pacman.x;
+      const y = this.pacman.y;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Content is typically in center-left area
+      const contentLeft = w * 0.05;
+      const contentRight = w * 0.75;
+      const contentTop = h * 0.1;
+      const contentBottom = h * 0.9;
+
+      // Check if pacman is in content area
+      if (x > contentLeft && x < contentRight && y > contentTop && y < contentBottom) {
+        // Fade more in the center
+        const centerX = (contentLeft + contentRight) / 2;
+        const centerY = (contentTop + contentBottom) / 2;
+        const distFromCenter = Math.hypot(x - centerX, y - centerY);
+        const maxDist = Math.hypot(contentRight - centerX, contentBottom - centerY);
+        const fade = Math.min(distFromCenter / maxDist, 1);
+        return 0.3 + fade * 0.7; // 30% to 100% opacity
+      }
+      return 1;
+    }
+
     private drawPacman() {
       const { x, y, direction, mouthOpen } = this.pacman;
       const mouthAngle = mouthOpen * 0.4;
+      const contentFade = this.getContentFade();
 
       this.ctx.save();
+      this.ctx.globalAlpha = contentFade;
       this.ctx.translate(x, y);
       this.ctx.rotate(direction);
 
       // Dynamic glow based on active state
-      const glowIntensity = 4 + this.activeOpacity * 16;
+      const glowIntensity = (4 + this.activeOpacity * 16) * contentFade;
       this.ctx.shadowColor = this.colors.pacmanGlow;
       this.ctx.shadowBlur = glowIntensity;
 

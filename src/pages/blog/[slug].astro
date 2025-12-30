@@ -49,7 +49,7 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 >
   <article class="container-narrow py-16">
     <!-- Back link -->
-    <a href="/blog" class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-900 transition-colors mb-8">
+    <a href="/blog" class="inline-flex items-center text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors mb-8">
       &larr; All posts
     </a>
 
@@ -62,23 +62,23 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
           class="w-full aspect-[2/1] object-cover rounded-lg mb-8"
         />
       )}
-      <div class="flex items-center gap-3 text-sm text-neutral-500">
+      <div class="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
         <time datetime={publishedDate}>{formattedDate}</time>
         <span>&middot;</span>
         <span>{readingTime} min read</span>
       </div>
-      <h1 class="mt-4 text-4xl font-bold text-neutral-900 tracking-tight">{title}</h1>
-      <p class="mt-4 text-xl text-neutral-600">{excerpt}</p>
+      <h1 class="mt-4 text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">{title}</h1>
+      <p class="mt-4 text-xl text-neutral-600 dark:text-neutral-400">{excerpt}</p>
     </header>
 
     <!-- Content -->
-    <div class="prose prose-neutral prose-lg max-w-none">
+    <div class="prose prose-neutral dark:prose-invert prose-lg max-w-none">
       <Content />
     </div>
 
     <!-- Footer -->
-    <footer class="mt-16 pt-8 border-t border-neutral-200">
-      <a href="/blog" class="text-neutral-500 hover:text-neutral-900 transition-colors">
+    <footer class="mt-16 pt-8 border-t border-neutral-200 dark:border-neutral-800">
+      <a href="/blog" class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors">
         &larr; Back to all posts
       </a>
     </footer>
