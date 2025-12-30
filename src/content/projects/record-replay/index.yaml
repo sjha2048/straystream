@@ -1,0 +1,10 @@
+title: Record Replay
+tagline: API traffic analysis and test generation service
+description: >-
+  A Flask-based service for collecting, analyzing, and generating test cases
+  from API traffic patterns. Features include real-time traffic collection,
+  anomaly detection, automatic test generation from production traffic,
+  OpenAPI-compatible exports, and background analysis jobs.
+techStack: []
+repoLink: https://github.com/sjha2048/record-replay
+featured: true
