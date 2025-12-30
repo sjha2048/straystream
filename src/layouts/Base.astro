@@ -16,7 +16,7 @@ const { title, description, image, article, publishedDate } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <BaseHead
       title={title}
@@ -25,8 +25,15 @@ const { title, description, image, article, publishedDate } = Astro.props;
       article={article}
       publishedDate={publishedDate}
     />
+    <script is:inline>
+      // Dark mode - runs before page renders to prevent flash
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
   </head>
-  <body class="min-h-screen flex flex-col">
+  <body class="min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
     <Header />
     <main class="flex-1">
       <slot />

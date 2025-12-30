@@ -3,22 +3,6 @@ import { getCollection } from 'astro:content';
 import Base from '@/layouts/Base.astro';
 import BlogCard from '@/components/BlogCard.astro';
 import ProjectCard from '@/components/ProjectCard.astro';
-import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
-
-// Get home page content from YAML file
-let home = {
-  headline: "Hey, I'm Sahil.",
-  subheadline: "I build data pipelines and developer tools.",
-  ctaText: "See what I've built",
-  ctaLink: "/projects",
-};
-try {
-  const homePath = path.join(process.cwd(), 'src/content/pages/home.yaml');
-  const homeContent = fs.readFileSync(homePath, 'utf-8');
-  home = yaml.load(homeContent) as typeof home;
-} catch {}
 
 // Get recent published posts
 let recentPosts: any[] = [];
@@ -36,33 +20,121 @@ try {
   const allProjects = await getCollection('projects');
   featuredProjects = allProjects.filter((project) => project.data.featured).slice(0, 3);
 } catch {}
+
+// Static content - easier to maintain than YAML for complex layouts
+const companies = [
+  { name: 'Bazaarvoice', period: '2025 - present' },
+  { name: 'KushoAI', period: '2024 - 2025' },
+  { name: 'Mesh (YC S20)', period: '2021 - 2023' },
+  { name: 'Alibaba Cloud', period: '2019' },
+];
+
+const techStack = [
+  'Python', 'JavaScript', 'Java', 'AWS', 'Kafka',
+  'ClickHouse', 'React', 'Docker', 'PostgreSQL'
+];
+
+// Day-aware quotes - different vibe for each day
+const dayQuotes: Record<number, string> = {
+  0: "Sunday. Refactoring my life choices and maybe some code.",
+  1: "Monday. New week, same Kafka errors.",
+  2: "Tuesday. The coffee is working. Barely.",
+  3: "Wednesday. Halfway through the sprint. Send help.",
+  4: "Thursday. Almost Friday. Almost human.",
+  5: "Friday. Deploying to prod. What could go wrong?",
+  6: "Saturday. Side project day. Or nap day. Probably nap.",
+};
+
+const today = new Date().getDay();
+const dailyQuote = dayQuotes[today];
+
+const socials = [
+  { name: 'GitHub', url: 'https://github.com/sjha2048', icon: 'gh' },
+  { name: 'LinkedIn', url: 'https://linkedin.com/in/sjha2048', icon: 'li' },
+  { name: 'Email', url: 'mailto:sjha200000@gmail.com', icon: 'mail' },
+];
 ---
 
-<Base title="Home | straystream" description="Personal portfolio and blog">
+<Base title="Sahil Jha | Software Engineer" description="Software engineer who builds data pipelines and developer tools">
+
   <!-- Hero Section -->
-  <section class="container-wide py-16 md:py-24">
-    <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
-      {home.headline}
-    </h1>
-    <p class="mt-4 text-xl text-neutral-600 max-w-xl">
-      {home.subheadline}
-    </p>
-    {home.ctaText && home.ctaLink && (
-      <a href={home.ctaLink} class="mt-6 btn btn-primary inline-block">
-        {home.ctaText}
-      </a>
-    )}
+  <section class="container-wide py-12 md:py-20">
+    <div class="max-w-3xl">
+      <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
+        Sahil Jha
+      </h1>
+      <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400">Software Engineer</p>
+
+      <p class="mt-6 text-xl text-neutral-700 dark:text-neutral-300 leading-relaxed">
+        I like building things and breaking them to see how they work. Mostly data pipelines
+        and developer tools - the kind of systems that process millions of events and need to
+        stay up. Currently tinkering with agentic AI.
+      </p>
+
+      <!-- Daily Quote -->
+      <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">
+        {dailyQuote}
+      </p>
+
+      <!-- Social Links -->
+      <div class="mt-6 flex gap-4">
+        {socials.map((social) => (
+          <a
+            href={social.url}
+            class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-sm flex items-center gap-1"
+            target={social.url.startsWith('mailto') ? undefined : '_blank'}
+            rel={social.url.startsWith('mailto') ? undefined : 'noopener noreferrer'}
+          >
+            {social.icon === 'gh' && (
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            )}
+            {social.icon === 'li' && (
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            )}
+            {social.icon === 'mail' && (
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            )}
+            {social.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Experience Bar -->
+  <section class="container-wide py-8 border-t border-neutral-100 dark:border-neutral-800">
+    <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Experience</p>
+    <div class="flex flex-wrap gap-x-8 gap-y-3">
+      {companies.map((company) => (
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-neutral-900 dark:text-neutral-100">{company.name}</span>
+          <span class="text-sm text-neutral-400 dark:text-neutral-500">{company.period}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="container-wide py-8 border-t border-neutral-100 dark:border-neutral-800">
+    <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Tech I work with</p>
+    <div class="flex flex-wrap gap-2">
+      {techStack.map((tech) => (
+        <span class="px-3 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm rounded-full">
+          {tech}
+        </span>
+      ))}
+    </div>
   </section>
 
   <!-- Featured Projects -->
-  {featuredProjects.length > 0 && (
-    <section class="container-wide py-12 border-t border-neutral-100">
-      <div class="flex items-center justify-between mb-8">
-        <h2 class="text-2xl font-semibold text-neutral-900">Featured Projects</h2>
-        <a href="/projects" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-          View all &rarr;
-        </a>
-      </div>
+  <section class="container-wide py-12 border-t border-neutral-100 dark:border-neutral-800">
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Projects</h2>
+      <a href="/projects" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors">
+        View all &rarr;
+      </a>
+    </div>
+    {featuredProjects.length > 0 ? (
       <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {featuredProjects.map((project) => (
           <ProjectCard
@@ -75,15 +147,17 @@ try {
           />
         ))}
       </div>
-    </section>
-  )}
+    ) : (
+      <p class="text-neutral-500 dark:text-neutral-400">Projects coming soon. Check out my <a href="https://github.com/sjha2048" class="underline hover:text-neutral-900 dark:hover:text-neutral-100">GitHub</a> in the meantime.</p>
+    )}
+  </section>
 
   <!-- Recent Posts -->
   {recentPosts.length > 0 && (
-    <section class="container-wide py-12 border-t border-neutral-100">
+    <section class="container-wide py-12 border-t border-neutral-100 dark:border-neutral-800">
       <div class="flex items-center justify-between mb-8">
-        <h2 class="text-2xl font-semibold text-neutral-900">Recent Posts</h2>
-        <a href="/blog" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+        <h2 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Recent Posts</h2>
+        <a href="/blog" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors">
           View all &rarr;
         </a>
       </div>
@@ -101,12 +175,20 @@ try {
     </section>
   )}
 
-  <!-- Empty state for new site -->
-  {featuredProjects.length === 0 && recentPosts.length === 0 && (
-    <section class="container-wide py-12 border-t border-neutral-100">
-      <p class="text-neutral-500">
-        Content coming soon.
+  <!-- Contact CTA -->
+  <section class="container-wide py-16 border-t border-neutral-100 dark:border-neutral-800">
+    <div class="max-w-xl">
+      <h2 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Let's talk</h2>
+      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+        Open to interesting opportunities. Drop me a line if you're working on something cool.
       </p>
-    </section>
-  )}
+      <a
+        href="mailto:sjha200000@gmail.com"
+        class="mt-4 btn btn-primary inline-block"
+      >
+        Get in touch
+      </a>
+    </div>
+  </section>
+
 </Base>
