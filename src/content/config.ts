@@ -7,7 +7,7 @@ const posts = defineCollection({
   schema: z.object({
     title: z.string(),
     excerpt: z.string(),
-    publishedDate: z.string(),
+    publishedDate: z.coerce.string(), // Keystatic saves as date, coerce to string
     coverImage: z.string().nullable().optional(),
     isPublished: z.boolean().default(false),
   }),
