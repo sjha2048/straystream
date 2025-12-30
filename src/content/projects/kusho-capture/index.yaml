@@ -1,0 +1,10 @@
+title: Kusho Capture
+tagline: Lightweight HTTP traffic capture middleware for Python
+description: >-
+  A middleware tool that automatically captures and logs HTTP API traffic for
+  Python web applications. Works with FastAPI, Flask, and Django. Features
+  include framework auto-detection, configurable URL filtering, async support,
+  sampling rates, and batch processing
+techStack: []
+repoLink: https://github.com/sjha2048/kusho-capture-py
+featured: true
