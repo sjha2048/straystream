@@ -1,0 +1,10 @@
+title: Assert Apex
+tagline: Generate Chai assertions effortlessly from JSON objects
+description: >-
+  A library that automatically generates Chai test assertions for JSON
+  structures and API response payloads. Supports nested objects and arrays,
+  intelligent type-checking, configurable depth traversal, and significantly
+  reduces boilerplate in test code.
+techStack: []
+repoLink: https://github.com/sjha2048/assert-apex
+featured: true
