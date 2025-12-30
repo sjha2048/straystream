@@ -1,0 +1,11 @@
+title: Assert Apex
+tagline: Generate Chai assertions effortlessly from JSON objects
+techStack:
+  - TypeScript
+  - JavaScript
+  - Chai
+  - Node.js
+projectLink: null
+repoLink: https://github.com/sjha2048/assert-apex
+coverImage: null
+featured: true

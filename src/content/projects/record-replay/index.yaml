@@ -1,0 +1,12 @@
+title: Record Replay
+tagline: API traffic analysis and test generation service
+techStack:
+  - Python
+  - Flask
+  - MySQL
+  - Docker
+  - OpenAI API
+projectLink: null
+repoLink: https://github.com/sjha2048/record-replay
+coverImage: null
+featured: true

@@ -1,0 +1,13 @@
+title: Kusho Capture
+tagline: Lightweight HTTP traffic capture middleware for Python
+techStack:
+  - Python
+  - FastAPI
+  - Flask
+  - Django
+  - WSGI
+  - ASGI
+projectLink: null
+repoLink: https://github.com/sjha2048/kusho-capture-py
+coverImage: null
+featured: true

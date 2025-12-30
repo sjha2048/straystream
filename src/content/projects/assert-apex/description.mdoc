@@ -1,0 +1,28 @@
+A library that automatically generates Chai test assertions for JSON structures and API response payloads.
+
+## Features
+
+- **Auto-generation**: Automatically create assertions from any JSON object
+- **Nested Support**: Handle deeply nested objects and arrays
+- **Type Checking**: Intelligent type-checking for all values
+- **Configurable Depth**: Control how deep the assertion generation goes
+- **Less Boilerplate**: Reduce repetitive test code significantly
+
+## Example
+
+```javascript
+const assertApex = require('assert-apex');
+
+// Your API response
+const response = {
+  user: { name: 'John', age: 30 },
+  status: 'active'
+};
+
+// Generate assertions automatically
+assertApex.generate(response);
+```
+
+## Why Use This?
+
+Writing assertions for complex API responses is tedious. Assert Apex analyzes your JSON structure and generates comprehensive Chai assertions, saving hours of manual test writing.
