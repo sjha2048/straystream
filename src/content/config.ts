@@ -1,4 +1,5 @@
 import { defineCollection, z } from 'astro:content';
+import { glob } from 'astro/loaders';
 
 const posts = defineCollection({
   type: 'content',
@@ -12,10 +13,11 @@ const posts = defineCollection({
 });
 
 const projects = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/index.yaml', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
     tagline: z.string().optional(),
+    description: z.string().optional(),
     techStack: z.array(z.string()).optional(),
     projectLink: z.string().nullable().optional(),
     repoLink: z.string().nullable().optional(),

@@ -127,8 +127,8 @@ export default config({
     projects: collection({
       label: 'Projects',
       slugField: 'title',
-      path: 'src/content/projects/*',
-      format: { contentField: 'description' },
+      path: 'src/content/projects/*/index',
+      format: { data: 'yaml' },
       columns: ['title', 'featured'],
       schema: {
         title: fields.slug({
@@ -140,6 +140,10 @@ export default config({
         tagline: fields.text({
           label: 'Tagline',
           description: 'Short one-liner about the project',
+        }),
+        description: fields.text({
+          label: 'Description',
+          multiline: true,
         }),
         techStack: fields.array(
           fields.text({ label: 'Technology' }),
@@ -163,15 +167,6 @@ export default config({
           label: 'Featured',
           description: 'Show on home page',
           defaultValue: false,
-        }),
-        description: fields.markdoc({
-          label: 'Description',
-          options: {
-            image: {
-              directory: 'public/images/projects',
-              publicPath: '/images/projects/',
-            },
-          },
         }),
       },
     }),
