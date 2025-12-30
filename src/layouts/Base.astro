@@ -2,6 +2,7 @@
 import BaseHead from '@/components/BaseHead.astro';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
+import SnakeBackground from '@/components/SnakeBackground.astro';
 import '@/styles/global.css';
 
 interface Props {
@@ -10,9 +11,10 @@ interface Props {
   image?: string;
   article?: boolean;
   publishedDate?: string;
+  showSnakeBackground?: boolean;
 }
 
-const { title, description, image, article, publishedDate } = Astro.props;
+const { title, description, image, article, publishedDate, showSnakeBackground = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -34,6 +36,7 @@ const { title, description, image, article, publishedDate } = Astro.props;
     </script>
   </head>
   <body class="min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
+    {showSnakeBackground && <SnakeBackground />}
     <Header />
     <main class="flex-1">
       <slot />

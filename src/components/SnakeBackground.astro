@@ -1,0 +1,622 @@
+---
+// Pacman Background - A subtle, playful background with Pacman eating dots
+---
+
+<canvas id="pacmanCanvas" class="pacman-canvas"></canvas>
+<div id="pacmanHint" class="pacman-hint">
+  <span class="hint-icon">&#x1F3AE;</span>
+  <span>Move cursor to control Pacman</span>
+</div>
+<div id="pacmanScore" class="pacman-score">0</div>
+
+<style>
+  .pacman-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: auto;
+  }
+
+  .pacman-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+    opacity: 0;
+    animation: hintFadeInOut 6s ease-in-out forwards;
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
+
+  :global(.dark) .pacman-hint {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .hint-icon {
+    font-size: 16px;
+  }
+
+  @keyframes hintFadeInOut {
+    0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  }
+
+  @media (max-width: 640px) {
+    .pacman-hint span:last-child {
+      display: none;
+    }
+    .pacman-hint::after {
+      content: 'Tap to play';
+    }
+  }
+
+  .pacman-score {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    color: rgba(0, 0, 0, 0.2);
+    z-index: 5;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+
+  .pacman-score::before {
+    content: 'Score: ';
+    font-weight: 400;
+  }
+
+  .pacman-score.pop {
+    transform: scale(1.2);
+    color: rgba(234, 179, 8, 0.7);
+  }
+
+  :global(.dark) .pacman-score {
+    color: rgba(255, 255, 255, 0.2);
+  }
+
+  :global(.dark) .pacman-score.pop {
+    color: rgba(250, 204, 21, 0.7);
+  }
+</style>
+
+<script>
+  class PacmanGame {
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private animationFrame: number | null = null;
+    private lastTimestamp = 0;
+    private isDark: boolean;
+    private isPhone: boolean;
+
+    // Pacman state
+    private pacman = {
+      x: 0,
+      y: 0,
+      direction: 0, // radians
+      mouthOpen: 0, // 0 to 1 for animation
+      mouthDirection: 1, // 1 = opening, -1 = closing
+      targetX: 0,
+      targetY: 0,
+    };
+
+    // Dots
+    private dots: Array<{ x: number; y: number; eaten: boolean; respawnTime: number }> = [];
+    private gridSize = 80;
+    private dotSize = 4;
+    private pacmanSize = 16;
+    private autoMoveSpeed = 0.8;
+    private userControlled = false;
+
+    // Trail effect when user controls
+    private trail: Array<{ x: number; y: number; age: number }> = [];
+    private activeOpacity = 0; // Smoothly transitions 0 (auto) to 1 (user controlled)
+
+    // Score
+    private score = 0;
+    private scoreElement: HTMLElement | null = null;
+
+    // Ghost (occasional appearance)
+    private ghost: { x: number; y: number; active: boolean; color: string } | null = null;
+    private ghostTimer = 0;
+
+    constructor(canvas: HTMLCanvasElement) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d')!;
+      this.isDark = document.documentElement.classList.contains('dark');
+      this.isPhone = /Mobile|Android|iOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (this.isPhone) {
+        this.gridSize = 70;
+        this.moveSpeed = 1;
+      }
+    }
+
+    private get colors() {
+      // Lerp between subtle (auto) and vibrant (user controlled)
+      const t = this.activeOpacity;
+
+      if (this.isDark) {
+        return {
+          pacman: `rgba(250, 204, 21, ${0.7 + t * 0.25})`, // More visible
+          pacmanGlow: `rgba(250, 204, 21, ${0.3 + t * 0.4})`,
+          dot: `rgba(255, 255, 255, ${0.18 + t * 0.15})`,
+          trail: `rgba(250, 204, 21, ${0.2 + t * 0.3})`,
+          ghost: 'rgba(255, 107, 107, 0.7)',
+          grid: 'rgba(255, 255, 255, 0.02)',
+        };
+      }
+      return {
+        pacman: `rgba(234, 179, 8, ${0.75 + t * 0.2})`, // More visible
+        pacmanGlow: `rgba(234, 179, 8, ${0.2 + t * 0.35})`,
+        dot: `rgba(0, 0, 0, ${0.15 + t * 0.12})`,
+        trail: `rgba(234, 179, 8, ${0.15 + t * 0.25})`,
+        ghost: 'rgba(239, 68, 68, 0.65)',
+        grid: 'rgba(0, 0, 0, 0.025)',
+      };
+    }
+
+    init() {
+      this.resizeCanvas();
+      this.initDots();
+      this.initPacman();
+      this.setupEventListeners();
+      this.scoreElement = document.getElementById('pacmanScore');
+      this.animate();
+
+      // Watch for theme changes
+      const observer = new MutationObserver(() => {
+        this.isDark = document.documentElement.classList.contains('dark');
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    private updateScore(points: number) {
+      this.score += points;
+      if (this.scoreElement) {
+        this.scoreElement.textContent = this.score.toString();
+        this.scoreElement.classList.add('pop');
+        setTimeout(() => {
+          this.scoreElement?.classList.remove('pop');
+        }, 300);
+      }
+    }
+
+    private resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = window.innerWidth;
+      const displayHeight = window.innerHeight;
+
+      this.canvas.width = Math.floor(displayWidth * dpr);
+      this.canvas.height = Math.floor(displayHeight * dpr);
+      this.canvas.style.width = `${displayWidth}px`;
+      this.canvas.style.height = `${displayHeight}px`;
+      this.ctx.scale(dpr, dpr);
+    }
+
+    private initDots() {
+      this.dots = [];
+      const cols = Math.ceil(window.innerWidth / this.gridSize);
+      const rows = Math.ceil(window.innerHeight / this.gridSize);
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          // Sparse dots - only 40% density
+          if (Math.random() > 0.6) {
+            this.dots.push({
+              x: i * this.gridSize + this.gridSize / 2 + (Math.random() - 0.5) * 30,
+              y: j * this.gridSize + this.gridSize / 2 + (Math.random() - 0.5) * 30,
+              eaten: false,
+              respawnTime: 0,
+            });
+          }
+        }
+      }
+    }
+
+    private initPacman() {
+      this.pacman.x = window.innerWidth / 4;
+      this.pacman.y = window.innerHeight / 2;
+      this.findNextTarget();
+    }
+
+    private findNextTarget() {
+      // Find nearest uneaten dot
+      let nearestDot: typeof this.dots[0] | null = null;
+      let nearestDist = Infinity;
+
+      for (const dot of this.dots) {
+        if (!dot.eaten) {
+          const dist = Math.hypot(dot.x - this.pacman.x, dot.y - this.pacman.y);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestDot = dot;
+          }
+        }
+      }
+
+      if (nearestDot) {
+        this.pacman.targetX = nearestDot.x;
+        this.pacman.targetY = nearestDot.y;
+      } else {
+        // All dots eaten, pick random position
+        this.pacman.targetX = Math.random() * window.innerWidth;
+        this.pacman.targetY = Math.random() * window.innerHeight;
+      }
+    }
+
+    private setupEventListeners() {
+      window.addEventListener('resize', () => {
+        this.resizeCanvas();
+        this.initDots();
+      });
+
+      // Mouse control - listen on window so it works even when content is on top
+      window.addEventListener('mousemove', (e) => {
+        this.userControlled = true;
+        this.pacman.targetX = e.clientX;
+        this.pacman.targetY = e.clientY;
+      });
+
+      // When mouse leaves the window, go back to auto mode
+      document.addEventListener('mouseleave', () => {
+        this.userControlled = false;
+        setTimeout(() => {
+          if (!this.userControlled) {
+            this.findNextTarget();
+          }
+        }, 500);
+      });
+
+      // Touch control - listen on window
+      window.addEventListener('touchstart', (e) => {
+        this.userControlled = true;
+        const touch = e.touches[0];
+        this.pacman.targetX = touch.clientX;
+        this.pacman.targetY = touch.clientY;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        this.userControlled = true;
+        const touch = e.touches[0];
+        this.pacman.targetX = touch.clientX;
+        this.pacman.targetY = touch.clientY;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        this.userControlled = false;
+        setTimeout(() => {
+          if (!this.userControlled) {
+            this.findNextTarget();
+          }
+        }, 1000);
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+          }
+        } else if (!this.animationFrame) {
+          this.lastTimestamp = 0;
+          this.animate();
+        }
+      });
+    }
+
+    private updatePacman(deltaTime: number) {
+      // Smoothly transition active opacity
+      const targetOpacity = this.userControlled ? 1 : 0;
+      this.activeOpacity += (targetOpacity - this.activeOpacity) * 0.08;
+
+      const dx = this.pacman.targetX - this.pacman.x;
+      const dy = this.pacman.targetY - this.pacman.y;
+      const dist = Math.hypot(dx, dy);
+
+      // Add to trail when user is controlling
+      if (this.userControlled && dist > 5) {
+        this.trail.push({ x: this.pacman.x, y: this.pacman.y, age: 0 });
+        if (this.trail.length > 12) this.trail.shift();
+      }
+
+      // Age and remove old trail segments
+      this.trail = this.trail.filter(t => {
+        t.age += 0.05;
+        return t.age < 1;
+      });
+
+      if (this.userControlled) {
+        // Smooth follow with fast lerp - feels responsive but not glued
+        const lerpSpeed = 0.25;
+        this.pacman.x += dx * lerpSpeed;
+        this.pacman.y += dy * lerpSpeed;
+
+        if (dist > 3) {
+          this.pacman.direction = Math.atan2(dy, dx);
+        }
+      } else if (dist > 2) {
+        // Auto mode - slow movement towards target
+        this.pacman.x += (dx / dist) * this.autoMoveSpeed;
+        this.pacman.y += (dy / dist) * this.autoMoveSpeed;
+        this.pacman.direction = Math.atan2(dy, dx);
+      } else {
+        // Reached target in auto mode, find new one
+        this.findNextTarget();
+      }
+
+      // Animate mouth - faster when user controlled
+      const mouthSpeed = this.userControlled ? 0.12 : 0.06;
+      this.pacman.mouthOpen += this.pacman.mouthDirection * mouthSpeed;
+      if (this.pacman.mouthOpen >= 1) {
+        this.pacman.mouthDirection = -1;
+      } else if (this.pacman.mouthOpen <= 0.1) {
+        this.pacman.mouthDirection = 1;
+      }
+
+      // Check dot collisions
+      for (const dot of this.dots) {
+        if (!dot.eaten) {
+          const dotDist = Math.hypot(dot.x - this.pacman.x, dot.y - this.pacman.y);
+          if (dotDist < this.pacmanSize + 4) {
+            dot.eaten = true;
+            dot.respawnTime = Date.now() + 6000 + Math.random() * 4000;
+            this.updateScore(10);
+          }
+        } else if (dot.respawnTime && Date.now() > dot.respawnTime) {
+          dot.eaten = false;
+          dot.respawnTime = 0;
+        }
+      }
+    }
+
+    private updateGhost(timestamp: number) {
+      // Spawn ghost every 10+ seconds with higher chance
+      if (!this.ghost && timestamp - this.ghostTimer > 10000 && Math.random() > 0.99) {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+        switch (side) {
+          case 0: x = -30; y = Math.random() * window.innerHeight; break;
+          case 1: x = window.innerWidth + 30; y = Math.random() * window.innerHeight; break;
+          case 2: x = Math.random() * window.innerWidth; y = -30; break;
+          default: x = Math.random() * window.innerWidth; y = window.innerHeight + 30;
+        }
+        this.ghost = {
+          x,
+          y,
+          active: true,
+          color: ['#FF6B6B', '#4ECDC4', '#FFB6C1', '#87CEEB'][Math.floor(Math.random() * 4)],
+        };
+      }
+
+      // Move ghost towards pacman
+      if (this.ghost) {
+        const dx = this.pacman.x - this.ghost.x;
+        const dy = this.pacman.y - this.ghost.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Ghost moves slower than pacman
+        this.ghost.x += (dx / dist) * 0.7;
+        this.ghost.y += (dy / dist) * 0.7;
+
+        // Pacman catches ghost - bonus points!
+        if (dist < 25) {
+          this.updateScore(50);
+          this.ghost = null;
+          this.ghostTimer = timestamp;
+        } else if (Math.random() > 0.998) {
+          // Ghost escapes after some time
+          this.ghost = null;
+          this.ghostTimer = timestamp;
+        }
+      }
+    }
+
+    private drawGrid() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      this.ctx.strokeStyle = this.colors.grid;
+      this.ctx.lineWidth = 1;
+
+      // Subtle grid lines
+      for (let x = 0; x < width; x += this.gridSize) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, 0);
+        this.ctx.lineTo(x, height);
+        this.ctx.stroke();
+      }
+      for (let y = 0; y < height; y += this.gridSize) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, y);
+        this.ctx.lineTo(width, y);
+        this.ctx.stroke();
+      }
+    }
+
+    private drawDots() {
+      for (const dot of this.dots) {
+        if (!dot.eaten) {
+          this.ctx.beginPath();
+          this.ctx.arc(dot.x, dot.y, this.dotSize, 0, Math.PI * 2);
+          this.ctx.fillStyle = this.colors.dot;
+          this.ctx.fill();
+        }
+      }
+    }
+
+    private drawTrail() {
+      if (this.trail.length === 0) return;
+
+      for (const segment of this.trail) {
+        const alpha = (1 - segment.age) * 0.6;
+        const size = this.pacmanSize * (1 - segment.age * 0.5);
+
+        this.ctx.beginPath();
+        this.ctx.arc(segment.x, segment.y, size, 0, Math.PI * 2);
+        this.ctx.fillStyle = this.colors.trail;
+        this.ctx.globalAlpha = alpha;
+        this.ctx.fill();
+        this.ctx.globalAlpha = 1;
+      }
+    }
+
+    private drawPacman() {
+      const { x, y, direction, mouthOpen } = this.pacman;
+      const mouthAngle = mouthOpen * 0.4;
+
+      this.ctx.save();
+      this.ctx.translate(x, y);
+      this.ctx.rotate(direction);
+
+      // Dynamic glow based on active state
+      const glowIntensity = 4 + this.activeOpacity * 16;
+      this.ctx.shadowColor = this.colors.pacmanGlow;
+      this.ctx.shadowBlur = glowIntensity;
+
+      // Draw pacman body
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, this.pacmanSize, mouthAngle, Math.PI * 2 - mouthAngle);
+      this.ctx.lineTo(0, 0);
+      this.ctx.closePath();
+      this.ctx.fillStyle = this.colors.pacman;
+      this.ctx.fill();
+
+      // Eye
+      this.ctx.shadowBlur = 0;
+      this.ctx.beginPath();
+      this.ctx.arc(4, -7, 2.5, 0, Math.PI * 2);
+      this.ctx.fillStyle = this.isDark ? `rgba(0,0,0,${0.4 + this.activeOpacity * 0.4})` : `rgba(0,0,0,${0.3 + this.activeOpacity * 0.5})`;
+      this.ctx.fill();
+
+      this.ctx.restore();
+    }
+
+    private drawGhost() {
+      if (!this.ghost) return;
+
+      const { x, y, color } = this.ghost;
+      const size = 14;
+
+      this.ctx.save();
+
+      // Glow effect
+      this.ctx.shadowColor = color;
+      this.ctx.shadowBlur = 12;
+
+      // Ghost body (rounded top, wavy bottom)
+      this.ctx.beginPath();
+      this.ctx.arc(x, y - size / 3, size, Math.PI, 0, false);
+      this.ctx.lineTo(x + size, y + size / 2);
+
+      // Wavy bottom
+      for (let i = 0; i < 4; i++) {
+        const wx = x + size - (i + 1) * (size / 2);
+        const wy = y + size / 2 + (i % 2 === 0 ? 4 : 0);
+        this.ctx.lineTo(wx, wy);
+      }
+
+      this.ctx.closePath();
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+
+      // Eyes
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#fff';
+      this.ctx.beginPath();
+      this.ctx.arc(x - 4, y - size / 3, 3.5, 0, Math.PI * 2);
+      this.ctx.arc(x + 4, y - size / 3, 3.5, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Pupils looking at pacman
+      const lookDir = Math.atan2(this.pacman.y - y, this.pacman.x - x);
+      this.ctx.fillStyle = '#2563eb';
+      this.ctx.beginPath();
+      this.ctx.arc(x - 4 + Math.cos(lookDir) * 1.5, y - size / 3 + Math.sin(lookDir) * 1.5, 2, 0, Math.PI * 2);
+      this.ctx.arc(x + 4 + Math.cos(lookDir) * 1.5, y - size / 3 + Math.sin(lookDir) * 1.5, 2, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      this.ctx.restore();
+    }
+
+    private drawVignette() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      const gradient = this.ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, Math.hypot(width, height) / 2
+      );
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0)');
+      gradient.addColorStop(1, this.isDark ? 'rgba(10, 10, 10, 0.7)' : 'rgba(255, 255, 255, 0.6)');
+
+      this.ctx.fillStyle = gradient;
+      this.ctx.fillRect(0, 0, width, height);
+    }
+
+    private draw() {
+      const dpr = window.devicePixelRatio || 1;
+
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      this.drawGrid();
+      this.drawDots();
+      this.drawTrail();
+      this.drawPacman();
+      this.drawGhost();
+      // Skip vignette - cleaner look
+    }
+
+    private update(timestamp: number) {
+      if (!this.lastTimestamp) this.lastTimestamp = timestamp;
+      const deltaTime = timestamp - this.lastTimestamp;
+      this.lastTimestamp = timestamp;
+
+      this.updatePacman(deltaTime);
+      this.updateGhost(timestamp);
+      this.draw();
+
+      this.animationFrame = requestAnimationFrame((t) => this.update(t));
+    }
+
+    private animate() {
+      this.animationFrame = requestAnimationFrame((t) => this.update(t));
+    }
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('pacmanCanvas') as HTMLCanvasElement;
+    if (canvas) {
+      const game = new PacmanGame(canvas);
+      game.init();
+    }
+  });
+
+  document.addEventListener('astro:page-load', () => {
+    const canvas = document.getElementById('pacmanCanvas') as HTMLCanvasElement;
+    if (canvas) {
+      const game = new PacmanGame(canvas);
+      game.init();
+    }
+  });
+</script>
