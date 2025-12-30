@@ -82,7 +82,7 @@ export default config({
     posts: collection({
       label: 'Blog Posts',
       slugField: 'title',
-      path: 'src/content/posts/*',
+      path: 'src/content/posts/*/index',
       format: { contentField: 'content' },
       entryLayout: 'content',
       columns: ['title', 'publishedDate', 'isPublished'],

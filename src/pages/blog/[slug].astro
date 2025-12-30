@@ -1,19 +1,38 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '@/layouts/Base.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import Markdoc from '@markdoc/markdoc';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
+  let posts: any[] = [];
+  try {
+    posts = await getCollection('posts');
+  } catch {
+    return [];
+  }
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id.replace('/index', '') },
     props: { post },
   }));
 }
 
 const { post } = Astro.props;
-const { Content } = await post.render();
-
 const { title, excerpt, publishedDate, coverImage } = post.data;
+const slug = post.id.replace('/index', '');
+
+// Read and parse the markdoc content file
+let contentHtml = '';
+try {
+  const contentPath = path.join(process.cwd(), 'src/content/posts', slug, 'content.mdoc');
+  const rawContent = fs.readFileSync(contentPath, 'utf-8');
+  const ast = Markdoc.parse(rawContent);
+  const content = Markdoc.transform(ast);
+  contentHtml = Markdoc.renderers.html(content);
+} catch {
+  contentHtml = '<p>Content coming soon.</p>';
+}
 
 const formattedDate = new Date(publishedDate).toLocaleDateString('en-US', {
   year: 'numeric',
@@ -21,8 +40,8 @@ const formattedDate = new Date(publishedDate).toLocaleDateString('en-US', {
   day: 'numeric',
 });
 
-// Calculate reading time (rough estimate: 200 words per minute)
-const wordCount = post.body?.split(/\s+/).length ?? 0;
+// Calculate reading time from content
+const wordCount = contentHtml.split(/\s+/).length ?? 0;
 const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 ---
 
@@ -58,9 +77,7 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     </header>
 
     <!-- Content -->
-    <div class="prose prose-neutral prose-lg max-w-none">
-      <Content />
-    </div>
+    <div class="prose prose-neutral prose-lg max-w-none" set:html={contentHtml} />
 
     <!-- Footer -->
     <footer class="mt-16 pt-8 border-t border-neutral-200">
