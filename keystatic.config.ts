@@ -4,16 +4,11 @@ const isProd = import.meta.env.PROD;
 
 export default config({
   storage: isProd
-    ? {
-        kind: 'github',
-        repo: {
-          owner: 'sjha2048',
-          name: 'straystream',
-        },
-      }
-    : {
-        kind: 'local',
-      },
+    ? { kind: 'cloud' }
+    : { kind: 'local' },
+  cloud: {
+    project: 'sjha2048/straystream',
+  },
 
   ui: {
     brand: { name: 'Straystream' },
