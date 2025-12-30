@@ -1,9 +1,9 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
-// Posts use glob loader to read Keystatic's folder structure
+// Posts use glob loader to read Keystatic's mdoc files (frontmatter + content)
 const posts = defineCollection({
-  loader: glob({ pattern: '**/index.yaml', base: './src/content/posts' }),
+  loader: glob({ pattern: '**/*.mdoc', base: './src/content/posts' }),
   schema: z.object({
     title: z.string(),
     excerpt: z.string(),

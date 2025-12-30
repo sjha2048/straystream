@@ -1,9 +1,6 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Base from '@/layouts/Base.astro';
-import fs from 'node:fs';
-import path from 'node:path';
-import Markdoc from '@markdoc/markdoc';
 
 export async function getStaticPaths() {
   let posts: any[] = [];
@@ -12,26 +9,24 @@ export async function getStaticPaths() {
   } catch {
     return [];
   }
+  // id is like "test/index" - extract folder name as slug
   return posts.map((post) => ({
-    params: { slug: post.id.replace('/index', '') },
+    params: { slug: post.id.split('/')[0] },
     props: { post },
   }));
 }
 
 const { post } = Astro.props;
 const { title, excerpt, publishedDate, coverImage } = post.data;
-const slug = post.id.replace('/index', '');
 
-// Read and parse the markdoc content file
+// Render the markdoc content
+const { Content } = await render(post);
 let contentHtml = '';
 try {
-  const contentPath = path.join(process.cwd(), 'src/content/posts', slug, 'content.mdoc');
-  const rawContent = fs.readFileSync(contentPath, 'utf-8');
-  const ast = Markdoc.parse(rawContent);
-  const content = Markdoc.transform(ast);
-  contentHtml = Markdoc.renderers.html(content);
+  // For reading time calculation, use the raw body
+  contentHtml = post.body || '';
 } catch {
-  contentHtml = '<p>Content coming soon.</p>';
+  contentHtml = '';
 }
 
 const formattedDate = new Date(publishedDate).toLocaleDateString('en-US', {
@@ -77,7 +72,9 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     </header>
 
     <!-- Content -->
-    <div class="prose prose-neutral prose-lg max-w-none" set:html={contentHtml} />
+    <div class="prose prose-neutral prose-lg max-w-none">
+      <Content />
+    </div>
 
     <!-- Footer -->
     <footer class="mt-16 pt-8 border-t border-neutral-200">

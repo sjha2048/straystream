@@ -26,7 +26,7 @@ try {
         {posts.map((post) => (
           <BlogCard
             title={post.data.title}
-            slug={post.id.replace('/index', '')}
+            slug={post.id.split('/')[0]}
             excerpt={post.data.excerpt}
             publishedDate={post.data.publishedDate}
             coverImage={post.data.coverImage}
