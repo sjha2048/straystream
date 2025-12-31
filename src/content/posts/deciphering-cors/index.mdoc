@@ -1,0 +1,124 @@
+---
+title: Deciphering CORS
+excerpt: is it a new pokemon?
+publishedDate: 2025-12-23
+coverImage: /images/posts/deciphering-cors/coverImage.webp
+isPublished: false
+---
+Imagine this: you're working on that million-dollar project idea of which you're having dreams and it's all hunky dory, you have completed the APIs, and now moving towards your friend who is handling the API integration for UI. You both sit together for a dry run and see this horrendous error that makes you question your life choices...
+
+![](/images/posts/deciphering-cors/image.png)
+
+Let's put our Stack Overflow hats on and try to figure out what's going on. We see a few terms like **CORS**, **preflight request**, etc...
+
+### **CORS, a new pokemon?**
+
+![](/images/posts/deciphering-cors/image.png)
+
+Just like Gardevoir, I think CORS has some sort of psychic power to create\
+a small black hole, but let's get technical and try to understand what it's about.
+
+> Cross-Origin Resource Sharing (CORS) is an HTTP-header based mechanism that allows a server to indicate any origins (domain, scheme, or port) other than its own from which a browser should permit loading resources. CORS also relies on a mechanism by which browsers make a "preflight" request to the server hosting the cross-origin resource, in order to check that the server will permit the actual request. In that preflight, the browser sends headers that indicate the HTTP method and headers that will be used in the actual request.
+
+Source: [MDN Docs](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS?ref=blog.kusho.ai)
+
+ELI5 Version:\
+\
+Let's say you go to domain-a.com and here you're trying to request resources from domain-b.com, domain-b can throw tantrums and deny the resource and this is a feature and not a bug!
+
+### **Why it's a feature**
+
+CORS exists to facilitate secure communication between the browser and server but why do we need it?
+
+Suppose you have an API that returns a Pokemon's data in which I am interested, and I try to use the same API to power my multi-million dollar project idea, you as an owner of that API can prevent me from doing this by blocking my origin.
+
+I know a pretty lame example but bear with it.
+
+### **Help! My HELLO WORLD API is Feeling Shy — Any Tricks to Make It Scream 'HELLO'?**
+
+So you have created a simple GET endpoint using Flask, feeling pretty accomplished, but it's not working the way it's expected?
+
+Well you're in luck today, we are not going to invent a solution rather we are going to use third-party packages to resolve the issue (really? issue? cors?)
+
+We'll be working with Python & Flask today! Simply create a new file named app.py and paste the following code:
+
+```
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+Here we are just spinning up a flask server which returns "Hello, World!" text on the "/" route after this run the below command to start the server
+
+```
+python app.py
+
+```
+
+you'll see this on screen.
+
+Let's see what happens in the browser meanwhile.
+
+#### **It works??**
+
+Well, it worked because the request is being originated from the same host i.e., 127.0.0.1 (I know there's no place like 🏠) hence it is working as expected.\
+\
+And now open the browser console on any webpage and paste the following JS snippet
+
+```
+fetch('http://localhost:5000/');
+
+```
+
+##### **Shit Happens**
+
+Now probably you're questioning your life choices and why all this happens to you. Let's not sweat it and turn to our dear friend Stack Overflow.
+
+Let's make some modifications to the code, we are going to use flask-cors extension, you can install it via pip
+
+```
+pip install flask-cors
+```
+
+With some modifications i.e., adding flask_cors related configuration in the code, let's try running it again.
+
+```python
+
+from flask import Flask
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, origins="*")  # This will enable CORS for all routes, and a very bad idea to allow a wildcard
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+```
+
+Let's try the browser console again.
+
+Finally, the moment you have been waiting for. It works!!!!
+
+### **Key Takeaways**
+
+CORS is a mechanism that allows us to restrict the resources being requested from other origins. We also tried to make it work for our use case, i.e, frontend integration.
+
+In the next part, we will dive deeper and discover more ways to configure cors to our advantage in terms of security and also see some sneaky ways to avoid it.
+
+### **Additional Reading**
+
+[Fetch Living Standard - HTTP CORS protocol](https://fetch.spec.whatwg.org/?ref=blog.kusho.ai#http-cors-protocol)
+
+[Stack Overflow - XMLHttpRequest cannot load xxx: No 'Access-Control-Allow-Origin' header](https://stackoverflow.com/questions/35553500/xmlhttprequest-cannot-load-xxx-no-access-control-allow-origin-header/35553666?ref=blog.kusho.ai#35553666)
