@@ -3,7 +3,7 @@ title: Deciphering CORS
 excerpt: is it a new pokemon?
 publishedDate: 2025-12-23
 coverImage: /images/posts/deciphering-cors/coverImage.webp
-isPublished: false
+isPublished: true
 ---
 Imagine this: you're working on that million-dollar project idea of which you're having dreams and it's all hunky dory, you have completed the APIs, and now moving towards your friend who is handling the API integration for UI. You both sit together for a dry run and see this horrendous error that makes you question your life choices...
 
@@ -22,7 +22,8 @@ a small black hole, but let's get technical and try to understand what it's abou
 
 Source: [MDN Docs](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS?ref=blog.kusho.ai)
 
-ELI5 Version:\
+##### ELI5 Version:\
+
 \
 Let's say you go to domain-a.com and here you're trying to request resources from domain-b.com, domain-b can throw tantrums and deny the resource and this is a feature and not a bug!
 
@@ -34,7 +35,7 @@ Suppose you have an API that returns a Pokemon's data in which I am interested, 
 
 I know a pretty lame example but bear with it.
 
-### **Help! My HELLO WORLD API is Feeling Shy — Any Tricks to Make It Scream 'HELLO'?**
+### **Help! My HELLO WORLD API is Feeling Shy,  Any Tricks to Make It Scream 'HELLO'?**
 
 So you have created a simple GET endpoint using Flask, feeling pretty accomplished, but it's not working the way it's expected?
 
@@ -42,7 +43,7 @@ Well you're in luck today, we are not going to invent a solution rather we are g
 
 We'll be working with Python & Flask today! Simply create a new file named app.py and paste the following code:
 
-```
+```python
 from flask import Flask
 
 app = Flask(__name__)
