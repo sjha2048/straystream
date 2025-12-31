@@ -7,13 +7,13 @@ isPublished: true
 ---
 Imagine this: you're working on that million-dollar project idea of which you're having dreams and it's all hunky dory, you have completed the APIs, and now moving towards your friend who is handling the API integration for UI. You both sit together for a dry run and see this horrendous error that makes you question your life choices...
 
-![](/images/posts/deciphering-cors/image.png)
+![](/images/posts/deciphering-cors/image-error.png)
 
 Let's put our Stack Overflow hats on and try to figure out what's going on. We see a few terms like **CORS**, **preflight request**, etc...
 
 ### **CORS, a new pokemon?**
 
-![](/images/posts/deciphering-cors/image.png)
+![](/images/posts/deciphering-cors/image-pokemon.png)
 
 Just like Gardevoir, I think CORS has some sort of psychic power to create\
 a small black hole, but let's get technical and try to understand what it's about.
@@ -64,13 +64,13 @@ python app.py
 
 you'll see this on screen.
 
-![](/images/posts/deciphering-cors/image.png)
+![](/images/posts/deciphering-cors/image-error.png)
 
 Let's see what happens in the browser meanwhile.
 
 #### **It works??**
 
-![](/images/posts/deciphering-cors/image.png)
+![](/images/posts/deciphering-cors/image-browser.png)
 
 Well, it worked because the request is being originated from the same host i.e., 127.0.0.1 (I know there's no place like 🏠) hence it is working as expected.\
 \
@@ -84,7 +84,7 @@ fetch('http://localhost:5000/');
 
 Now probably you're questioning your life choices and why all this happens to you. Let's not sweat it and turn to our dear friend Stack Overflow.
 
-![](/images/posts/deciphering-cors/image.png)
+![](/images/posts/deciphering-cors/image-console.png)
 
 Let's make some modifications to the code, we are going to use flask-cors extension, you can install it via pip
 
