@@ -58,16 +58,19 @@ if __name__ == '__main__':
 
 Here we are just spinning up a flask server which returns "Hello, World!" text on the "/" route after this run the below command to start the server
 
-```
+```python
 python app.py
-
 ```
 
 you'll see this on screen.
 
+![](/images/posts/deciphering-cors/image.png)
+
 Let's see what happens in the browser meanwhile.
 
 #### **It works??**
+
+![](/images/posts/deciphering-cors/image.png)
 
 Well, it worked because the request is being originated from the same host i.e., 127.0.0.1 (I know there's no place like 🏠) hence it is working as expected.\
 \
@@ -75,12 +78,13 @@ And now open the browser console on any webpage and paste the following JS snipp
 
 ```
 fetch('http://localhost:5000/');
-
 ```
 
 ##### **Shit Happens**
 
 Now probably you're questioning your life choices and why all this happens to you. Let's not sweat it and turn to our dear friend Stack Overflow.
+
+![](/images/posts/deciphering-cors/image.png)
 
 Let's make some modifications to the code, we are going to use flask-cors extension, you can install it via pip
 
@@ -105,12 +109,11 @@ def hello_world():
 if __name__ == '__main__':
     app.run(debug=True)
 
-
 ```
 
 Let's try the browser console again.
 
-Finally, the moment you have been waiting for. It works!!!!
+![](/images/posts/deciphering-cors/image.png)
 
 ### **Key Takeaways**
 
