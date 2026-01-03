@@ -1,0 +1,470 @@
+---
+title: Running ML Models in the Browser with Transformers.js
+excerpt: >-
+  What if your AI features didn't need a server? What if user data never left
+  their device?
+publishedDate: 2026-01-02
+coverImage: >-
+  /images/posts/running-ml-models-in-the-browser-with-transformers-js/coverImage.jpeg
+isPublished: true
+---
+# Running ML Models in the Browser with Transformers.js
+
+With Transformers.js, you can run machine learning models entirely in the browser using WebAssembly. No API calls, no server costs, complete privacy.
+
+## Why Run ML in the Browser?
+
+Traditional ML workflows send user data to a server:
+
+```
+User Input → API Call → Server Processing → Response
+```
+
+This has problems:
+
+- **Privacy** Sensitive data leaves the user's device
+- **Latency** Network round trips add 100 to 500ms delay
+- **Cost** Server infrastructure scales with users
+- **Offline** Doesn't work without internet
+
+Browser based ML flips this:
+
+```
+User Input → Local Model → Instant Response
+```
+
+Your data never leaves the device. It works offline. And it scales to millions of users for free.
+
+## What is Transformers.js?
+
+[Transformers.js](https://huggingface.co/docs/transformers.js) is Hugging Face's library for running transformer models in JavaScript. It uses ONNX Runtime compiled to WebAssembly for near native performance.
+
+Supported tasks include:
+
+- **Text embeddings** Convert text to vectors for semantic search
+- **Text classification** Sentiment analysis, spam detection
+- **Text generation** Run small LLMs locally
+- **Image classification** Analyze images client side
+- **Object detection** Find objects in images
+- **Speech recognition** Transcribe audio in the browser
+
+## Getting Started
+
+```bash
+npm install @huggingface/transformers
+```
+
+Basic usage:
+
+```typescript
+import { pipeline } from '@huggingface/transformers';
+
+// Sentiment analysis
+const classifier = await pipeline('sentiment-analysis');
+const result = await classifier('I love this product!');
+// [{ label: 'POSITIVE', score: 0.9998 }]
+
+// Text generation
+const generator = await pipeline('text-generation', 'Xenova/gpt2');
+const output = await generator('The quick brown fox');
+// [{ generated_text: 'The quick brown fox jumps over the lazy dog...' }]
+```
+
+## Text Embeddings and Semantic Search
+
+The most practical browser ML use case is semantic search, finding content by meaning, not keywords.
+
+### How Embeddings Work
+
+An embedding model converts text into a high dimensional vector (array of numbers). Similar texts produce similar vectors.
+
+```
+"How do I reset my password?" → [0.12, -0.34, 0.56, ...]
+"I forgot my login credentials" → [0.11, -0.32, 0.58, ...]  // Similar!
+"What's the weather today?" → [-0.45, 0.23, -0.12, ...]    // Different
+```
+
+### Setting Up the Embedding Model
+
+The `all-MiniLM-L6-v2` model is a great choice, small (23MB) but effective:
+
+```typescript
+import { pipeline, env } from '@huggingface/transformers';
+
+// Configure for browser
+env.useBrowserCache = true;  // Cache model in IndexedDB
+env.allowLocalModels = false; // Fetch from HuggingFace CDN
+
+// Load model
+const embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+
+// Generate embedding
+async function embed(text: string): Promise<number[]> {
+  const output = await embedder(text, {
+    pooling: 'mean',
+    normalize: true,
+  });
+  return Array.from(output.data as Float32Array);
+}
+
+const vector = await embed('Hello world');
+console.log(vector.length); // 384 dimensions
+```
+
+### Singleton Pattern for Performance
+
+Model loading takes 2 to 5 seconds. Load once and reuse:
+
+```typescript
+import { pipeline, env, type FeatureExtractionPipeline } from '@huggingface/transformers';
+
+env.useBrowserCache = true;
+env.allowLocalModels = false;
+
+let model: FeatureExtractionPipeline | null = null;
+let loadingPromise: Promise<FeatureExtractionPipeline> | null = null;
+
+async function getModel(): Promise<FeatureExtractionPipeline> {
+  if (model) return model;
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+    dtype: 'fp32',
+  }).then((pipe) => {
+    model = pipe as FeatureExtractionPipeline;
+    return model;
+  });
+
+  return loadingPromise;
+}
+
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const pipe = await getModel();
+  const output = await pipe(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data as Float32Array);
+}
+```
+
+### Implementing Semantic Search
+
+```typescript
+interface Document {
+  id: string;
+  text: string;
+  embedding?: number[];
+}
+
+// Cosine similarity between two vectors
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Embed a document
+async function embedDocument(doc: Document): Promise<Document> {
+  const embedding = await generateEmbedding(doc.text);
+  return { ...doc, embedding };
+}
+
+// Search by semantic similarity
+async function search(
+  query: string,
+  documents: Document[],
+  topK = 5
+): Promise<Array<{ doc: Document; score: number }>> {
+  const queryEmbedding = await generateEmbedding(query);
+
+  return documents
+    .filter(doc => doc.embedding)
+    .map(doc => ({
+      doc,
+      score: cosineSimilarity(queryEmbedding, doc.embedding!),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+```
+
+### Full Example
+
+```typescript
+// Sample documents
+const docs: Document[] = [
+  { id: '1', text: 'How to reset your password' },
+  { id: '2', text: 'Billing and subscription FAQ' },
+  { id: '3', text: 'Getting started with the API' },
+  { id: '4', text: 'Troubleshooting login issues' },
+  { id: '5', text: 'Account security best practices' },
+];
+
+// Embed all documents (do once, store results)
+const embeddedDocs = await Promise.all(docs.map(embedDocument));
+
+// Search by meaning
+const results = await search('I forgot my login', embeddedDocs);
+// Returns: "Troubleshooting login issues" and "How to reset your password"
+// Even though "forgot" and "login" aren't in those exact documents!
+```
+
+## Storing Embeddings
+
+Embeddings are just arrays, store them however you like:
+
+### IndexedDB (with Dexie.js)
+
+```typescript
+import Dexie from 'dexie';
+
+const db = new Dexie('MyDatabase');
+db.version(1).stores({
+  documents: 'id, text', // embedding stored as blob
+});
+
+// Save
+await db.documents.put({
+  id: '1',
+  text: 'Hello world',
+  embedding: new Float32Array(embedding),
+});
+
+// Load
+const doc = await db.documents.get('1');
+const embedding = Array.from(doc.embedding);
+```
+
+### LocalStorage (for small datasets)
+
+```typescript
+// Save
+localStorage.setItem('embeddings', JSON.stringify(embeddedDocs));
+
+// Load
+const docs = JSON.parse(localStorage.getItem('embeddings') || '[]');
+```
+
+## Chrome Extension Setup
+
+Running Transformers.js in a Chrome extension requires extra configuration.
+
+### Content Security Policy
+
+WebAssembly needs special permissions:
+
+```typescript
+// wxt.config.ts or manifest.json
+{
+  content_security_policy: {
+    extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
+}
+```
+
+### WASM Files
+
+Copy ONNX Runtime WASM files to your extension:
+
+```json
+{
+  "scripts": {
+    "copy-wasm": "cp node_modules/onnxruntime-web/dist/*.wasm public/wasm/",
+    "postinstall": "npm run copy-wasm"
+  }
+}
+```
+
+Configure the path:
+
+```typescript
+import { env } from '@huggingface/transformers';
+
+const wasmPath = chrome.runtime.getURL('wasm/');
+env.backends.onnx.wasm.wasmPaths = wasmPath;
+```
+
+Make WASM files accessible in your manifest:
+
+```json
+{
+  "web_accessible_resources": [{
+    "resources": ["wasm/*"],
+    "matches": ["<all_urls>"]
+  }]
+}
+```
+
+## Other Tasks
+
+### Sentiment Analysis
+
+```typescript
+const classifier = await pipeline('sentiment-analysis');
+
+const results = await classifier([
+  'I love this!',
+  'This is terrible.',
+  'It works okay I guess.',
+]);
+// [
+//   { label: 'POSITIVE', score: 0.9998 },
+//   { label: 'NEGATIVE', score: 0.9995 },
+//   { label: 'NEGATIVE', score: 0.6234 }
+// ]
+```
+
+### Zero Shot Classification
+
+Classify text into categories without training:
+
+```typescript
+const classifier = await pipeline(
+  'zero-shot-classification',
+  'Xenova/mobilebert-uncased-mnli'
+);
+
+const result = await classifier(
+  'I need to book a flight to Paris next week',
+  ['travel', 'finance', 'technology', 'food']
+);
+// { labels: ['travel', 'finance', ...], scores: [0.95, 0.02, ...] }
+```
+
+### Question Answering
+
+```typescript
+const qa = await pipeline(
+  'question-answering',
+  'Xenova/distilbert-base-uncased-distilled-squad'
+);
+
+const result = await qa({
+  question: 'What is the capital of France?',
+  context: 'France is a country in Europe. Its capital is Paris, which is known for the Eiffel Tower.',
+});
+// { answer: 'Paris', score: 0.98 }
+```
+
+### Image Classification
+
+```typescript
+const classifier = await pipeline(
+  'image-classification',
+  'Xenova/vit-base-patch16-224'
+);
+
+const result = await classifier('https://example.com/cat.jpg');
+// [{ label: 'tabby cat', score: 0.92 }, ...]
+```
+
+## Performance Tips
+
+### Preload Models Early
+
+```typescript
+// Call on app init to warm up
+async function preloadModels() {
+  await getModel(); // Start loading immediately
+}
+
+// In your app entry
+preloadModels(); // Don't await, let it load in background
+```
+
+### Batch Processing
+
+```typescript
+// Embed multiple texts at once (more efficient)
+const texts = ['Hello', 'World', 'Test'];
+const outputs = await embedder(texts, { pooling: 'mean', normalize: true });
+```
+
+### Avoid UI Blocking
+
+```typescript
+async function embedManyDocuments(docs: Document[]) {
+  for (const doc of docs) {
+    await embedDocument(doc);
+    await new Promise(r => setTimeout(r, 10)); // Yield to UI
+  }
+}
+```
+
+### Use Web Workers
+
+For heavy processing, move to a web worker:
+
+```typescript
+// worker.ts
+import { pipeline } from '@huggingface/transformers';
+
+const model = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+
+self.onmessage = async (e) => {
+  const embedding = await model(e.data.text, { pooling: 'mean', normalize: true });
+  self.postMessage({ embedding: Array.from(embedding.data) });
+};
+```
+
+## Model Size Considerations
+
+{% table %}
+- Model
+- Size
+- Dimensions
+- Use Case
+---
+- all-MiniLM-L6-v2
+- 23MB
+- 384
+- General purpose, fast
+---
+- all-mpnet-base-v2
+- 110MB
+- 768
+- Higher quality
+---
+- bge-small-en
+- 33MB
+- 384
+- Good balance
+---
+- gte-small
+- 33MB
+- 384
+- Multilingual
+{% /table %}
+
+For most use cases, MiniLM is the sweet spot, small enough to load quickly, accurate enough for real applications.
+
+## When to Use Browser ML
+
+**Good fit:**
+
+- Privacy sensitive applications
+- Offline first features
+- Search and similarity
+- Classification tasks
+- Datasets under 10,000 items
+
+**Consider server side:**
+
+- Large language model generation
+- Very large datasets
+- GPU intensive tasks
+- Real time processing of large files
+
+## Conclusion
+
+Transformers.js brings production quality ML to the browser. With WebAssembly, you can run embeddings, classification, and even small language models entirely client side.
+
+The MiniLM embedding model is a great starting point, 23MB, loads in seconds, and enables powerful semantic search with zero privacy tradeoffs.
+
+**Resources:**
+
+- [Transformers.js Documentation](https://huggingface.co/docs/transformers.js)
+- [Xenova's Model Hub](https://huggingface.co/Xenova) Browser optimized models
+- [ONNX Runtime Web](https://onnxruntime.ai/docs/tutorials/web/)
