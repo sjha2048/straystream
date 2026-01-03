@@ -1,0 +1,425 @@
+---
+title: 'Building Modern Chrome Extensions with WXT: A Complete Guide'
+excerpt: >-
+  If you've ever built a Chrome extension the traditional way, you know the
+  pain: manually managing manifest.json, no hot reload, vanilla JavaScript, and
+  a folder structure that feels like it's from 2010.
+publishedDate: 2026-01-03
+coverImage: >-
+  /images/posts/building-modern-chrome-extensions-with-wxt-a-complete-guide/coverImage.jpeg
+isPublished: true
+---
+# Building Modern Chrome Extensions with WXT
+
+WXT changes everything. It's a modern framework for building browser extensions with TypeScript, hot module replacement, and support for React, Vue, Solid, and Svelte out of the box.
+
+## Why WXT?
+
+Before WXT, building a Chrome extension meant:
+
+- Manually writing `manifest.json` with cryptic permission strings
+- No TypeScript without complex webpack configs
+- Reloading the extension manually after every change
+- Figuring out the background script vs content script vs popup distinction yourself
+
+WXT gives you:
+
+- **TypeScript by default** - Full type safety, including Chrome API types
+- **Hot reload** - Changes reflect instantly during development
+- **Framework support** - Use React, Vue, Solid, or Svelte
+- **File-based entrypoints** - Drop files in `entrypoints/` and WXT figures out the manifest
+- **Cross-browser support** - Build for Chrome and Firefox from the same codebase
+
+## Getting Started
+
+```bash
+npx wxt@latest init my-extension
+cd my-extension
+npm install
+npm run dev
+```
+
+That's it. You have a working extension with hot reload.
+
+## Understanding Extension Architecture
+
+Chrome extensions have three main contexts, each with different capabilities:
+
+{% table %}
+- Context
+- DOM Access
+- Chrome APIs
+- Use Case
+---
+- Background
+- No
+- Full
+- Event handling, storage, API calls
+---
+- Content Script
+- Yes
+- Limited
+- Modify web pages, inject UI
+---
+- Popup/Side Panel
+- Own DOM
+- Full
+- Extension UI
+{% /table %}
+
+WXT makes managing these contexts simple with its file-based entrypoints system.
+
+## The Entrypoints Pattern
+
+Instead of manually configuring `manifest.json`, create files in the `entrypoints/` directory:
+
+```
+entrypoints/
+├── background.ts        → Background service worker
+├── content.ts           → Content script (injected into pages)
+├── popup/
+│   ├── index.html       → Popup HTML
+│   └── main.ts          → Popup entry
+└── sidepanel/
+    ├── index.html       → Side panel HTML
+    └── main.tsx         → Side panel entry (with React/Solid/Vue)
+```
+
+WXT automatically generates the correct manifest entries.
+
+## Background Script
+
+The background script runs as a service worker. It has access to all Chrome APIs but can't touch the DOM.
+
+```typescript
+// entrypoints/background.ts
+export default defineBackground(() => {
+  console.log('Extension installed!');
+
+  // Listen for extension icon click
+  browser.action.onClicked.addListener(async (tab) => {
+    console.log('Icon clicked on tab:', tab.url);
+  });
+
+  // Listen for keyboard shortcuts
+  browser.commands.onCommand.addListener(async (command) => {
+    if (command === 'my-shortcut') {
+      // Do something
+    }
+  });
+
+  // Listen for tab events
+  browser.tabs.onRemoved.addListener((tabId) => {
+    console.log('Tab closed:', tabId);
+  });
+
+  // Listen for messages from other contexts
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'GET_DATA') {
+      fetchData().then(sendResponse);
+      return true; // Keep channel open for async response
+    }
+  });
+});
+```
+
+## Content Scripts
+
+Content scripts run in the context of web pages. They can access and modify the DOM but have limited Chrome API access.
+
+```typescript
+// entrypoints/content.ts
+export default defineContentScript({
+  matches: ['https://*.example.com/*'], // Which pages to inject into
+
+  main() {
+    console.log('Content script loaded on:', window.location.href);
+
+    // Modify the page
+    document.body.style.backgroundColor = 'lightblue';
+
+    // Listen for messages from background
+    browser.runtime.onMessage.addListener((message) => {
+      if (message.type === 'HIGHLIGHT') {
+        highlightText(message.query);
+      }
+    });
+  },
+});
+```
+
+### Injecting UI with Shadow DOM
+
+To inject UI that's isolated from the host page's styles:
+
+```typescript
+// entrypoints/content.tsx
+import { render } from 'solid-js/web'; // or react-dom, vue, etc.
+
+export default defineContentScript({
+  matches: ['<all_urls>'],
+  cssInjectionMode: 'ui',
+
+  main(ctx) {
+    // Create isolated UI container
+    const ui = createIntegratedUi(ctx, {
+      position: 'overlay', // or 'inline'
+      onMount: (container) => {
+        // Inject styles into shadow DOM
+        const style = document.createElement('style');
+        style.textContent = `
+          .my-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 999999;
+          }
+        `;
+        container.appendChild(style);
+
+        // Render your component
+        render(() => <MyModal onClose={() => ui.remove()} />, container);
+      },
+    });
+
+    ui.mount();
+  },
+});
+```
+
+## Popup and Side Panel
+
+Popups and side panels are standard HTML pages with full Chrome API access.
+
+```html
+<!-- entrypoints/popup/index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
+```
+
+```typescript
+// entrypoints/popup/main.tsx
+import { render } from 'solid-js/web';
+import { createSignal } from 'solid-js';
+
+function Popup() {
+  const [count, setCount] = createSignal(0);
+
+  // Access Chrome APIs directly
+  const openSettings = () => {
+    browser.runtime.openOptionsPage();
+  };
+
+  return (
+    <div style={{ width: '300px', padding: '16px' }}>
+      <h1>My Extension</h1>
+      <button onClick={() => setCount(c => c + 1)}>
+        Count: {count()}
+      </button>
+      <button onClick={openSettings}>Settings</button>
+    </div>
+  );
+}
+
+render(() => <Popup />, document.getElementById('root')!);
+```
+
+## Configuring the Manifest
+
+WXT auto-generates most of the manifest, but you can customize it in `wxt.config.ts`:
+
+```typescript
+// wxt.config.ts
+import { defineConfig } from 'wxt';
+
+export default defineConfig({
+  modules: ['@wxt-dev/module-solid'], // or module-react, module-vue
+  manifest: {
+    name: 'My Extension',
+    description: 'A cool Chrome extension',
+    version: '1.0.0',
+    permissions: [
+      'activeTab',    // Access current tab
+      'storage',      // Use chrome.storage
+      'scripting',    // Inject scripts programmatically
+    ],
+    host_permissions: [
+      'https://*.example.com/*', // Access specific sites
+    ],
+    commands: {
+      'my-shortcut': {
+        suggested_key: {
+          default: 'Ctrl+Shift+E',
+          mac: 'Command+Shift+E',
+        },
+        description: 'Trigger my action',
+      },
+    },
+  },
+});
+```
+
+## Communication Between Contexts
+
+Use message passing to communicate between contexts:
+
+```typescript
+// Content script → Background
+const response = await browser.runtime.sendMessage({
+  type: 'FETCH_DATA',
+  url: 'https://api.example.com/data',
+});
+
+// Background → Content script (specific tab)
+await browser.tabs.sendMessage(tabId, {
+  type: 'UPDATE_UI',
+  data: { count: 42 },
+});
+
+// Background listener with async response
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'FETCH_DATA') {
+    fetch(message.url)
+      .then(res => res.json())
+      .then(data => sendResponse({ success: true, data }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true; // IMPORTANT: keeps channel open for async response
+  }
+});
+```
+
+## Using Storage
+
+Chrome provides several storage options:
+
+```typescript
+// Local storage (per device)
+await browser.storage.local.set({ key: 'value', user: { name: 'John' } });
+const { key, user } = await browser.storage.local.get(['key', 'user']);
+
+// Sync storage (synced across devices, 100KB limit)
+await browser.storage.sync.set({ settings: { theme: 'dark' } });
+
+// Listen for changes
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.key) {
+    console.log('key changed:', changes.key.oldValue, '→', changes.key.newValue);
+  }
+});
+```
+
+## Using Frameworks
+
+WXT supports React, Vue, Solid, and Svelte via modules:
+
+```bash
+# Solid.js
+npm install solid-js @wxt-dev/module-solid
+
+# React
+npm install react react-dom @wxt-dev/module-react
+
+# Vue
+npm install vue @wxt-dev/module-vue
+```
+
+```typescript
+// wxt.config.ts
+export default defineConfig({
+  modules: ['@wxt-dev/module-solid'], // or module-react, module-vue
+});
+```
+
+## Development Commands
+
+```bash
+# Start dev server with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Package as .zip for Chrome Web Store
+npm run zip
+
+# Build for Firefox
+npm run build:firefox
+npm run zip:firefox
+```
+
+## Common Patterns
+
+### Programmatic Script Injection
+
+```typescript
+// Background script
+async function injectScript(tabId: number) {
+  await browser.scripting.executeScript({
+    target: { tabId },
+    files: ['/content-scripts/injected.js'],
+  });
+}
+```
+
+### Context Menus
+
+```typescript
+// Background script
+browser.contextMenus.create({
+  id: 'my-menu',
+  title: 'Do Something',
+  contexts: ['selection'], // Show when text is selected
+});
+
+browser.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'my-menu') {
+    console.log('Selected text:', info.selectionText);
+  }
+});
+```
+
+### Alarms (Scheduled Tasks)
+
+```typescript
+// Background script
+browser.alarms.create('my-alarm', {
+  periodInMinutes: 60, // Run every hour
+});
+
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'my-alarm') {
+    // Do periodic task
+  }
+});
+```
+
+## Tips and Gotchas
+
+1. **Use `browser` not `chrome`** - WXT provides a `browser` global that works cross-browser and is properly typed.
+1. **Content scripts can't access extension storage directly** - Send messages to the background script instead.
+1. **Service workers can be terminated** - Don't rely on in-memory state in background scripts. Use `chrome.storage` for persistence.
+1. **Test on real sites** - Some sites have strict CSPs that can break content scripts.
+1. **Manifest V3 is required** - WXT generates MV3 manifests by default. Some old APIs are deprecated.
+
+## Conclusion
+
+WXT transforms Chrome extension development into a modern, enjoyable experience. You get TypeScript, hot reload, framework support, and sensible defaults - while WXT handles the complexity of manifest generation and cross-browser compatibility.
+
+**Resources:**
+
+- [WXT Documentation](https://wxt.dev)
+- [Chrome Extension APIs](https://developer.chrome.com/docs/extensions/reference/)
+- [WXT GitHub](https://github.com/wxt-dev/wxt)
