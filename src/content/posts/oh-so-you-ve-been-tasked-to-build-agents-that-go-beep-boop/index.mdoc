@@ -119,7 +119,7 @@ Sometimes agents need dropdowns, not text. We built a UI tool factory with three
 
 LLM generates everything. Good for creative/generated content.
 
-```
+```typescript
 // Agent decides what options to show
 createUITool({
     id: "suggest-ideas",
@@ -137,7 +137,7 @@ createUITool({
 
 LLM provides intent/labels, backend fetches data. Best of both worlds.
 
-```
+```typescript
 createUITool({
     id: "pick-holiday",
 
@@ -161,7 +161,7 @@ createUITool({
 
 LLM provides minimal selector, backend controls everything. For when you don't trust the LLM with your data.
 
-```
+```typescript
 createUITool({
     id: "product-picker",
 
@@ -185,7 +185,7 @@ createUITool({
 
 Backend sends component specs, frontend renders them:
 
-```
+```typescript
 // The Protocol
 REQUEST: { type: "agent_ui_request", requestId: "abc", component: {...} }
 RESPONSE: { type: "agent_ui_response", requestId: "abc", value: "selected_thing" }
@@ -214,7 +214,7 @@ User selects → frontend sends response → agent continues. Lazy-load renderer
 
 ## The Chat Hook
 
-```
+```typescript
 // Pseudo-React
 AgentChat():
     { messages, sendMessage, status } = useAgentChat({ endpoint, threadId })
@@ -288,7 +288,7 @@ We used Postgres over NoSQL. Needed flexible `ORDER BY` and offset pagination. O
 
 ## Testing Chaos
 
-```
+```typescript
 // Routing tests (target: >90% accuracy)
 tests = [
     { "Show charts" → analytics-agent },
