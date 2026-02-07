@@ -1,0 +1,350 @@
+---
+title: Oh, So You've Been Tasked to Build Agents That Go Beep Boop
+excerpt: >-
+  So. You've been voluntold to build AI agents. Your PM wandered in muttering
+  about "agentic workflows" and you nodded along while your soul left your body.
+
+
+  Welcome. I just came back from this journey. Here's the map.
+publishedDate: 2026-02-07
+coverImage: >-
+  /images/posts/oh-so-you-ve-been-tasked-to-build-agents-that-go-beep-boop/coverImage.jpeg
+isPublished: false
+---
+## What Even Is an "Agent"?
+
+Not a chatbot in a trench coat. It's a system that:
+
+- **Routes intelligently** - "This sounds like a job for the Analytics Agent"
+- **Uses tools** - Actually calls your APIs
+- **Remembers stuff** - "Didn't you say you hate pie charts?"
+- **Fails gracefully** - Things *will* break
+
+```
+┌─────────────────────────────────────────┐
+│           ORCHESTRATOR                  │
+│   "I decide who handles this"           │
+└─────────────────────────────────────────┘
+                    │
+        ┌───────────┼───────────┐
+        ▼           ▼           ▼
+   Specialist   Specialist   Specialist
+   (tools)      (tools)      (tools)
+```
+
+---
+
+## Framework Wars: TypeScript Won (For Us)
+
+{% table %}
+- Factor
+- ADK
+- Mastra
+---
+- Type Safety
+- "Meh"
+- Compile-time checks
+---
+- Multi-agent
+- DIY
+- Often built-in
+---
+- LLM Flexibility
+- Sometimes locked
+- Provider-agnostic
+{% /table %}
+
+**Our call:** Mastra (TypeScript). Team knows it, type safety catches schema errors early, no context-switch tax with our React frontend.
+
+*Your mileage varies. Pick what your team knows.*
+
+---
+
+## The Wrapper Pattern
+
+Production needs feature flags, permissions, runtime context. Frameworks don't handle this. So: wrappers.
+
+```typescript
+TOOL WRAPPER (pseudo):
+    id: "sensitive-data-fetcher"
+    featureFlags: ["premium"]
+    permissions: ["data:read"]
+
+    execute(input, context):
+        // Only runs if user passes checks
+        return backend.fetch(context.clientId, input.query)
+
+AGENT WRAPPER (pseudo):
+    id: "analytics-wizard"
+    routingDescription: "Use for charts and reports"
+    routingExamples: ["show numbers", "quarterly report"]
+    tools: { fetchData, generateChart }
+
+    isEnabled(user):
+        if not hasFlags(user): return false
+        return enabledTools(user).length > 0  // No tools = no agent
+
+    toRoutingPrompt():
+        // Auto-generates orchestrator docs
+        return "### {name}: {description}..."
+```
+
+Orchestrator builds its routing prompt from agent metadata. Add agent to registry → orchestrator auto-discovers.
+
+---
+
+## The Registry: One List to Rule Them All
+
+```
+AGENT_REGISTRY = [
+    analyticsAgent,
+    reportingAgent,
+    newAgentBobBuiltLastWeek,
+    // Add here. That's it.
+]
+
+orchestrator = createAgent({
+    instructions: buildPromptFrom(AGENT_REGISTRY),  // Static at startup
+    agents: (ctx) => AGENT_REGISTRY.filter(a => a.isEnabled(ctx))  // Dynamic per-request
+})
+```
+
+---
+
+## Dynamic UI: Three Patterns That Actually Work
+
+Sometimes agents need dropdowns, not text. We built a UI tool factory with three data flow patterns:
+
+### Pattern 1: Pure LLM
+
+LLM generates everything. Good for creative/generated content.
+
+```
+// Agent decides what options to show
+createUITool({
+    id: "suggest-ideas",
+
+    buildComponent(input):
+        return {
+            type: "carousel",
+            label: input.label,
+            items: input.items  // LLM generated these
+        }
+})
+```
+
+### Pattern 2: LLM + Backend
+
+LLM provides intent/labels, backend fetches data. Best of both worlds.
+
+```
+createUITool({
+    id: "pick-holiday",
+
+    resolveData(input, ctx):
+        // Backend fetches real data
+        return holidayService.getHolidays(ctx.clientId, input.limit)
+
+    buildComponent(input, holidays):
+        return {
+            type: "radio",
+            label: input.label,  // LLM provided this
+            options: holidays.map(h => ({  // Backend provided these
+                value: h.id,
+                label: h.name
+            }))
+        }
+})
+```
+
+### Pattern 3: Pure Backend
+
+LLM provides minimal selector, backend controls everything. For when you don't trust the LLM with your data.
+
+```
+createUITool({
+    id: "product-picker",
+
+    resolveData(input):
+        // LLM only says "categoryId: electronics"
+        // Backend handles EVERYTHING else
+        return catalog.getCategory(input.categoryId)
+
+    buildComponent(_input, data):
+        return {
+            type: "dropdown",
+            label: data.categoryName,  // Backend controlled
+            options: data.products     // Backend controlled
+        }
+})
+```
+
+---
+
+## Frontend: Component Registry Pattern
+
+Backend sends component specs, frontend renders them:
+
+```
+// The Protocol
+REQUEST: { type: "agent_ui_request", requestId: "abc", component: {...} }
+RESPONSE: { type: "agent_ui_response", requestId: "abc", value: "selected_thing" }
+
+// Frontend Registry (pseudo)
+ComponentRegistry = {
+    radio: RadioRenderer,
+    dropdown: DropdownRenderer,
+    multi_select: MultiSelectRenderer,
+    carousel: CarouselRenderer,
+    cta_with_text: CTARenderer
+}
+
+// Orchestrator picks the right renderer
+AgentUIRenderer({ component, onResponse }):
+    Renderer = ComponentRegistry[component.type]
+    return <Renderer
+        {...component}
+        onSubmit={(val) => onResponse({ requestId, value: val })}
+    />
+```
+
+User selects → frontend sends response → agent continues. Lazy-load renderers for performance.
+
+---
+
+## The Chat Hook
+
+```
+// Pseudo-React
+AgentChat():
+    { messages, sendMessage, status } = useAgentChat({ endpoint, threadId })
+
+    return (
+        <ChatContainer>
+            FOR message IN messages:
+                FOR part IN message.parts:
+                    IF part.type == "text":
+                        <Markdown>{part.text}</Markdown>
+
+                    ELSE IF part.type == "reasoning":
+                        <CollapsibleThinking>{part.content}</CollapsibleThinking>
+
+                    ELSE IF part.type == "agent_ui_request":
+                        <AgentUIRenderer
+                            component={part.component}
+                            onResponse={sendAsToolResult}
+                        />
+
+            <Input onSubmit={sendMessage} disabled={status == "streaming"} />
+        </ChatContainer>
+    )
+```
+
+---
+
+## Legacy System Integration
+
+Your shiny agent needs to talk to your vintage systems.
+
+```
+Frontend → Gateway → Agent Service
+              ↓
+         Existing auth, feature flags, permissions
+```
+
+Gateway validates tokens, enriches context, streams responses. Agent stays clean.
+
+**SSE Gotchas:**
+
+- Proxies buffer. Add `X-Accel-Buffering: no`.
+- Long streams hit timeouts. Configure infra.
+- Connection pools hate long-lived connections.
+
+---
+
+## Memory: Three Tiers
+
+{% table %}
+- Tier
+- What
+- Where
+---
+- Short
+- Last N messages
+- RAM
+---
+- Working
+- Preferences, state
+- Database
+---
+- Long
+- Historical search
+- Vector DB
+{% /table %}
+
+We used Postgres over NoSQL. Needed flexible `ORDER BY` and offset pagination. Old faithful wins.
+
+---
+
+## Testing Chaos
+
+```
+// Routing tests (target: >90% accuracy)
+tests = [
+    { "Show charts" → analytics-agent },
+    { "asdfgh" → NONE, should ask clarifying question }
+]
+
+// Tool tests
+tests = [
+    { "Get urgent" → calls [fetchUrgent] },
+    { "Update thing" → calls [getDetails, update] IN ORDER }
+]
+```
+
+Golden datasets: versioned test data. When prod breaks, add the case. Test suite grows like a glacier of frozen bugs.
+
+---
+
+## Error Philosophy
+
+Put it in the prompt:
+
+```
+When things break:
+- Don't show errors. Say "Couldn't fetch that. Try something else?"
+- If unsure, ask. Don't guess.
+- Never say "an error occurred" - robot talk.
+```
+
+Code handles retries. Agent handles humans.
+
+---
+
+## Lessons
+
+1. **Wrappers first.** You'll need feature flags.
+1. **Registry pattern.** One place to add agents.
+1. **Type your schemas.** Find errors at compile time.
+1. **Test routing obsessively.** Wrong routing = nothing else matters.
+1. **Gateway everything.** Auth and monitoring layer.
+1. **UI tool patterns matter.** Pick LLM-generated vs backend-controlled based on trust level.
+1. **Lazy load renderers.** Your bundle size will thank you.
+
+---
+
+## Go Build
+
+The ecosystem evolves weekly. But patterns - wrappers, registries, gateways, UI tool factories - these travel well.
+
+Now go make the machines beep boop.
+
+---
+
+## Thanks
+
+Shoutout to [**Mastra**](https://mastra.ai/) for building something genuinely useful. TypeScript agents needed this.
+
+---
+
+*Questions? Hit me up on [Twitter/X](https://twitter.com/sjha2048)*
